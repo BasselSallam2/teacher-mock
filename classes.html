@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Classes - Xplain AI</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/app.css"/>
+</head>
+<body>
+<div id="app-shell"></div>
+<template id="page-template">
+  <div class="p-4 md:p-16 flex-1 max-w-7xl mx-auto w-full">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+      <div class="relative w-full md:w-96">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+        <input id="class-search" class="w-full pl-10 pr-4 py-2 bg-surface-container border-none rounded-lg focus:ring-2 focus:ring-primary-container" placeholder="Search classes..." type="text"/>
+      </div>
+      <div class="flex gap-2 w-full md:w-auto">
+        <select id="class-sort" class="px-3 py-2 bg-surface-container rounded-lg text-on-surface-variant text-sm border border-outline-variant">
+          <option value="newest">Sort by: Newest</option>
+          <option value="name">Sort by: Name</option>
+          <option value="lessons">Sort by: Lessons</option>
+        </select>
+        <button id="btn-new-class" class="px-4 py-2 bg-primary-container text-on-primary-container rounded-lg text-sm flex items-center gap-2">
+          <span class="material-symbols-outlined text-sm">add</span> New Class
+        </button>
+      </div>
+    </div>
+    <div id="class-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
+  </div>
+
+  <div id="class-modal" class="hidden fixed inset-0 z-50 bg-on-background/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-surface rounded-2xl w-full max-w-md border border-outline-variant/30 overflow-hidden">
+      <div class="p-6 border-b border-outline-variant/30 flex justify-between items-center">
+        <h3 class="text-xl font-semibold" id="class-modal-title">Create New Class</h3>
+        <button type="button" data-close-modal class="p-1 rounded-full hover:bg-surface-container"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form id="class-form" class="p-6 space-y-4">
+        <input type="hidden" id="class-id"/>
+        <div>
+          <label class="text-sm text-on-surface-variant">Name</label>
+          <input required id="class-name" class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low" placeholder="Grade 5 Science, Set A"/>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-sm text-on-surface-variant">Grade</label>
+            <input required id="class-grade" class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low" placeholder="Grade 8"/>
+          </div>
+          <div>
+            <label class="text-sm text-on-surface-variant">Curriculum</label>
+            <select id="class-curriculum" class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low">
+              <option>British</option>
+              <option>American</option>
+              <option>IB Diploma</option>
+              <option>National</option>
+              <option>Other</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="text-sm text-on-surface-variant">Description</label>
+          <textarea id="class-desc" rows="3" class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low" placeholder="Optional notes"></textarea>
+        </div>
+        <div class="flex justify-end gap-2 pt-2">
+          <button type="button" data-close-modal class="px-4 py-2 text-on-surface-variant hover:bg-surface-container rounded-lg">Cancel</button>
+          <button type="submit" class="px-4 py-2 bg-primary text-on-primary rounded-lg">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</template>
+<script src="js/seed.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/layout.js"></script>
+<script>
+  XplainLayout.init({ active: "classes", title: "Manage Classes", search: false });
+
+  function lessonHref(l) {
+    if (l.status === "ready") return "workspace.html?lesson=" + l.id;
+    if (l.session_id) return "workspace.html?id=" + l.session_id;
+    return "lessons.html";
+  }
+
+  function openCreate() {
+    document.getElementById("class-modal-title").textContent = "Create New Class";
+    document.getElementById("class-form").reset();
+    document.getElementById("class-id").value = "";
+    XplainUI.openModal("class-modal");
+  }
+  function openEdit(id) {
+    const c = XplainStore.getClass(id);
+    if (!c) return;
+    document.getElementById("class-modal-title").textContent = "Edit Class";
+    document.getElementById("class-id").value = c.id;
+    document.getElementById("class-name").value = c.name;
+    document.getElementById("class-grade").value = c.grade;
+    document.getElementById("class-curriculum").value = c.curriculum;
+    document.getElementById("class-desc").value = c.description || "";
+    XplainUI.openModal("class-modal");
+  }
+
+  function render() {
+    const q = (document.getElementById("class-search").value || "").toLowerCase();
+    const sort = document.getElementById("class-sort").value;
+    let list = XplainStore.getClasses().filter(
+      (c) => !q || c.name.toLowerCase().includes(q) || c.grade.toLowerCase().includes(q)
+    );
+    if (sort === "name") list.sort((a, b) => a.name.localeCompare(b.name));
+    else if (sort === "lessons") {
+      list.sort(
+        (a, b) =>
+          XplainStore.getLessonsForClass(b.id).length -
+          XplainStore.getLessonsForClass(a.id).length
+      );
+    } else list.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+    document.getElementById("class-grid").innerHTML =
+      list
+        .map((c) => {
+          const allLessons = XplainStore.getLessonsForClass(c.id);
+          const shown = allLessons.slice(0, 3);
+          const lessonsHtml = shown.length
+            ? shown
+                .map(
+                  (l) => `
+<a href="${lessonHref(l)}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface-container transition-colors group/lesson">
+  <div class="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
+    <span class="material-symbols-outlined text-[18px]">${l.icon || "menu_book"}</span>
+  </div>
+  <div class="flex-1 min-w-0">
+    <p class="text-sm font-medium text-on-surface truncate group-hover/lesson:text-primary">${XplainUI.escapeHtml(l.title)}</p>
+    <p class="text-xs text-on-surface-variant">${XplainUI.relativeTime(l.updated_at)}</p>
+  </div>
+  ${XplainUI.statusChip(l.status)}
+</a>`
+                )
+                .join("")
+            : `<p class="px-3 py-4 text-sm text-on-surface-variant text-center">No lessons yet for this class.</p>`;
+
+          return `
+<div class="bg-surface rounded-xl border border-outline-variant overflow-hidden flex flex-col">
+  <div class="h-2 w-full" style="background:${c.accent}"></div>
+  <div class="p-5">
+    <div class="flex justify-between items-start mb-3">
+      <div class="min-w-0">
+        <span class="inline-block px-2 py-1 bg-surface-container-high text-on-surface-variant text-xs rounded mb-2">${XplainUI.escapeHtml(c.grade)}</span>
+        <h3 class="text-xl font-semibold text-on-surface truncate">${XplainUI.escapeHtml(c.name)}</h3>
+        <p class="text-sm text-on-surface-variant mt-1 flex items-center gap-1">
+          <span class="material-symbols-outlined text-[16px]">menu_book</span>
+          ${XplainUI.escapeHtml(c.curriculum)}
+          <span class="mx-1">·</span>
+          ${allLessons.length} lesson${allLessons.length === 1 ? "" : "s"}
+        </p>
+      </div>
+      <div class="relative shrink-0">
+        <button class="menu-btn text-on-surface-variant p-1 rounded-full hover:bg-surface-variant" data-id="${c.id}">
+          <span class="material-symbols-outlined">more_vert</span>
+        </button>
+        <div class="menu-panel hidden absolute right-0 mt-1 bg-surface border border-outline-variant rounded-lg shadow-lg z-10 py-1 min-w-[140px]" data-menu="${c.id}">
+          <button class="edit-btn w-full text-left px-4 py-2 text-sm hover:bg-surface-container" data-id="${c.id}">Edit</button>
+          <button class="del-btn w-full text-left px-4 py-2 text-sm text-error hover:bg-surface-container" data-id="${c.id}">Delete</button>
+        </div>
+      </div>
+    </div>
+    ${c.description ? `<p class="text-sm text-on-surface-variant mb-4 line-clamp-2">${XplainUI.escapeHtml(c.description)}</p>` : ""}
+    <div class="border border-outline-variant/50 rounded-lg bg-surface-container-lowest overflow-hidden">
+      <div class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-on-surface-variant bg-surface-container-low flex justify-between items-center">
+        <span>Lessons in this class</span>
+        ${allLessons.length > 3 ? `<span class="font-normal normal-case tracking-normal">Showing 3 of ${allLessons.length}</span>` : ""}
+      </div>
+      <div class="divide-y divide-outline-variant/30">
+        ${lessonsHtml}
+      </div>
+    </div>
+  </div>
+  <div class="px-5 py-3 border-t border-outline-variant/50 bg-surface-container-lowest flex justify-between items-center gap-3 mt-auto">
+    <a href="class.html?id=${c.id}" class="text-xs font-medium text-primary hover:underline inline-flex items-center gap-1">
+      See all lessons
+      <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+    </a>
+    <a href="workspace.html?new=1" class="text-xs text-on-surface-variant hover:text-primary hover:underline">New lesson</a>
+  </div>
+</div>`;
+        })
+        .join("") +
+      `<button id="placeholder-create" class="bg-surface-container-lowest rounded-xl border-2 border-dashed border-outline-variant hover:border-primary-container/50 hover:bg-surface-container-low transition-colors flex flex-col items-center justify-center p-8 min-h-[240px]">
+        <div class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center mb-4"><span class="material-symbols-outlined">add</span></div>
+        <h3 class="text-xl font-semibold text-on-surface mb-2">Create New Class</h3>
+        <p class="text-on-surface-variant text-center">Organize lessons by class</p>
+      </button>`;
+
+    document.getElementById("placeholder-create")?.addEventListener("click", openCreate);
+    document.querySelectorAll(".menu-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        document.querySelectorAll(".menu-panel").forEach((p) => p.classList.add("hidden"));
+        document.querySelector(`[data-menu="${id}"]`)?.classList.toggle("hidden");
+      });
+    });
+    document.querySelectorAll(".edit-btn").forEach((btn) =>
+      btn.addEventListener("click", () => openEdit(btn.dataset.id))
+    );
+    document.querySelectorAll(".del-btn").forEach((btn) =>
+      btn.addEventListener("click", () => {
+        if (confirm("Delete this class?")) {
+          XplainStore.deleteClass(btn.dataset.id);
+          XplainUI.toast("Class deleted", "", { icon: "delete" });
+          render();
+        }
+      })
+    );
+  }
+
+  document.getElementById("btn-new-class").addEventListener("click", openCreate);
+  document.querySelectorAll("[data-close-modal]").forEach((b) =>
+    b.addEventListener("click", () => XplainUI.closeModal("class-modal"))
+  );
+  document.getElementById("class-search").addEventListener("input", render);
+  document.getElementById("class-sort").addEventListener("change", render);
+  document.getElementById("class-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const id = document.getElementById("class-id").value;
+    const data = {
+      name: document.getElementById("class-name").value,
+      grade: document.getElementById("class-grade").value,
+      curriculum: document.getElementById("class-curriculum").value,
+      description: document.getElementById("class-desc").value,
+    };
+    if (id) {
+      XplainStore.updateClass(id, data);
+      XplainUI.toast("Class updated", data.name, { icon: "check" });
+    } else {
+      XplainStore.addClass(data);
+      XplainUI.toast("Class created", data.name, { icon: "add" });
+    }
+    XplainUI.closeModal("class-modal");
+    render();
+  });
+  document.addEventListener("click", () =>
+    document.querySelectorAll(".menu-panel").forEach((p) => p.classList.add("hidden"))
+  );
+  render();
+</script>
+</body>
+</html>

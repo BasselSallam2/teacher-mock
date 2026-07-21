@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Xplain AI</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/app.css"/>
+</head>
+<body class="bg-background text-on-background antialiased">
+<div id="app-shell"></div>
+<template id="page-template">
+  <main class="flex-1 overflow-y-auto p-4 md:p-16">
+    <div class="max-w-2xl mx-auto min-h-[70vh] flex flex-col justify-center pb-16">
+      <p class="text-sm text-on-surface-variant mb-2" id="welcome-line"></p>
+      <h1 class="text-3xl md:text-4xl font-semibold text-on-surface mb-3">What would you like to create today?</h1>
+      <p class="text-on-surface-variant mb-8">Start a lesson with AI — no forms, no dashboards. Just tell it what you need.</p>
+
+      <form id="start-form" class="bg-surface border border-outline-variant rounded-2xl p-2 shadow-sm flex flex-col sm:flex-row gap-2 mb-6">
+        <input id="start-prompt" class="flex-1 border-0 bg-transparent rounded-xl focus:ring-0 text-on-surface px-4 py-3" placeholder="e.g. Build a lesson about AI for Grade 8…" autocomplete="off"/>
+        <button type="submit" class="shrink-0 px-5 py-3 bg-primary-container text-on-primary-container rounded-xl font-medium flex items-center justify-center gap-2 hover:opacity-90">
+          <span class="material-symbols-outlined text-sm">add</span>
+          Create New Lesson
+        </button>
+      </form>
+
+      <div id="continue-block" class="hidden mb-10">
+        <p class="text-xs uppercase tracking-wider text-on-surface-variant mb-2">Continue where you left off</p>
+        <a id="continue-link" href="#" class="flex items-center justify-between gap-4 bg-surface-container-low border border-outline-variant/60 rounded-xl p-4 hover:bg-surface-container transition-colors">
+          <div class="min-w-0">
+            <p class="font-medium text-on-surface truncate" id="continue-title"></p>
+            <p class="text-sm text-on-surface-variant truncate" id="continue-sub"></p>
+          </div>
+          <span class="material-symbols-outlined text-primary">arrow_forward</span>
+        </a>
+      </div>
+
+      <div class="flex flex-wrap gap-3 text-sm">
+        <a href="identities.html" class="text-on-surface-variant hover:text-primary">Identities</a>
+        <span class="text-outline-variant">·</span>
+        <a href="media.html" class="text-on-surface-variant hover:text-primary">Media Library</a>
+        <span class="text-outline-variant">·</span>
+        <a href="classes.html" class="text-on-surface-variant hover:text-primary">Classes</a>
+        <span class="text-outline-variant">·</span>
+        <a href="lessons.html" class="text-on-surface-variant hover:text-primary">All sessions</a>
+        <span class="text-outline-variant">·</span>
+        <a href="settings.html" class="text-on-surface-variant hover:text-primary">Settings</a>
+      </div>
+    </div>
+  </main>
+</template>
+<script src="js/seed.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/layout.js"></script>
+<script>
+  XplainLayout.init({ active: "index", hideFooter: true });
+  const teacher = XplainStore.getTeacher();
+  document.getElementById("welcome-line").textContent =
+    `Hi ${teacher.display_name} · ${teacher.school_name}`;
+
+  // Continue recent: prefer in-progress session, else latest lesson
+  const sessions = XplainStore.getSessions();
+  const lessons = XplainStore.getLessons();
+  let continueItem = null;
+  const openSess = sessions.find((s) => s.phase === "planning" || s.phase === "generating_plan" || s.phase === "building");
+  if (openSess) {
+    continueItem = {
+      href: "workspace.html?id=" + openSess.id,
+      title: openSess.title,
+      sub: "In progress · " + XplainUI.relativeTime(openSess.updated_at),
+    };
+  } else if (lessons[0]) {
+    const l = lessons[0];
+    continueItem = {
+      href: l.status === "ready" ? "workspace.html?lesson=" + l.id : "lessons.html",
+      title: l.title,
+      sub: XplainUI.statusChip(l.status).replace(/<[^>]+>/g, "") + " · " + XplainUI.relativeTime(l.updated_at),
+    };
+  }
+  if (continueItem) {
+    document.getElementById("continue-block").classList.remove("hidden");
+    document.getElementById("continue-link").href = continueItem.href;
+    document.getElementById("continue-title").textContent = continueItem.title;
+    document.getElementById("continue-sub").textContent = continueItem.sub.replace(/Indexed|Ready|Building|Failed|Planning/g, (m) => m);
+    // simpler sub without HTML
+    const l = lessons[0];
+    const open = openSess;
+    document.getElementById("continue-sub").textContent = open
+      ? "In progress · " + XplainUI.relativeTime(open.updated_at)
+      : (l?.status || "") + " · " + XplainUI.relativeTime(l.updated_at);
+  }
+
+  document.getElementById("start-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const prompt = document.getElementById("start-prompt").value.trim();
+    const session = XplainStore.createSession({ title: "New Lesson" });
+    if (prompt) sessionStorage.setItem("xplain-seed-prompt", prompt);
+    location.href = "workspace.html?id=" + session.id;
+  });
+</script>
+</body>
+</html>
