@@ -433,12 +433,20 @@
     XplainStore.appendMessage(sessionId, {
       role: "assistant",
       text:
-        "Which source(s) should ground this lesson?\n\nOpen the Media Library picker to search folders and files — don’t scroll a huge list in chat.",
+        "Which source(s) should ground this lesson?\n\nOpen the Media Library to search folders and files — you can select more than one.",
       meta: {
         open_media_picker: true,
-        recent: media.slice(0, 3).map((m) => ({
+        recent: media.slice(0, 4).map((m) => ({
           id: m.id,
           label: m.display_name,
+          icon: mimeIcon(m.mime_type),
+          sub: (m.mime_type || "").includes("pdf")
+            ? "PDF"
+            : (m.mime_type || "").includes("presentation")
+              ? "Slides"
+              : (m.mime_type || "").includes("uri")
+                ? "Link"
+                : "File",
         })),
       },
     });
@@ -483,8 +491,8 @@
       role: "assistant",
       text:
         n === 1
-          ? "Selected source for this lesson:"
-          : `Selected ${n} sources for this lesson:`,
+          ? "Here’s the source I’ll use for this lesson. Add more if you want, or continue to Identity."
+          : `Here are the ${n} sources I’ll use. Add more if you want, or continue to Identity.`,
       meta: {
         selected_sources: sources,
         open_media_picker: true,
@@ -498,7 +506,7 @@
     XplainStore.updateSession(sessionId, { agent_step: "identity" });
     XplainStore.appendMessage(sessionId, {
       role: "assistant",
-      text: "Which Identity set should we use? (colors, logo, background, image style)",
+      text: "Which Identity (brand) should we use for colors, logo, background, and image style?",
       meta: {
         pick_identity: true,
         options: list.map((i) => ({

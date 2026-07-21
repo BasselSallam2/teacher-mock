@@ -16,7 +16,7 @@
     el.className =
       "hidden fixed inset-0 z-[60] bg-on-background/50 backdrop-blur-sm flex items-center justify-center p-4";
     el.innerHTML = `
-<div class="bg-surface rounded-2xl w-full max-w-3xl max-h-[85vh] border border-outline-variant/30 shadow-xl flex flex-col overflow-hidden">
+<div class="bg-surface rounded-2xl w-full max-w-4xl max-h-[88vh] border border-outline-variant/30 shadow-xl flex flex-col overflow-hidden">
   <div class="p-4 md:p-5 border-b border-outline-variant/30 flex items-start justify-between gap-3 shrink-0">
     <div>
       <h3 class="text-xl font-semibold text-on-surface">Select sources</h3>
