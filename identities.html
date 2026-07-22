@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Identities - Xplain AI</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&family=Lora:wght@400;600;700&family=Montserrat:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&family=Open+Sans:wght@400;600;700&family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="css/app.css"/>
 </head>
@@ -45,15 +45,15 @@
           <div>
             <label class="text-sm text-on-surface-variant">Primary color</label>
             <div class="mt-1 flex gap-2 items-center">
-              <input type="color" id="f-primary" value="#622ce5" class="h-10 w-12 rounded border border-outline-variant cursor-pointer"/>
-              <input id="f-primary-hex" class="flex-1 rounded-lg border-outline-variant bg-surface-container-low text-sm" value="#622ce5"/>
+              <input type="color" id="f-primary" value="#7B4DFF" class="h-10 w-12 rounded border border-outline-variant cursor-pointer"/>
+              <input id="f-primary-hex" class="flex-1 rounded-lg border-outline-variant bg-surface-container-low text-sm" value="#7B4DFF"/>
             </div>
           </div>
           <div>
             <label class="text-sm text-on-surface-variant">Secondary color</label>
             <div class="mt-1 flex gap-2 items-center">
-              <input type="color" id="f-secondary" value="#feae2c" class="h-10 w-12 rounded border border-outline-variant cursor-pointer"/>
-              <input id="f-secondary-hex" class="flex-1 rounded-lg border-outline-variant bg-surface-container-low text-sm" value="#feae2c"/>
+              <input type="color" id="f-secondary" value="#F5A623" class="h-10 w-12 rounded border border-outline-variant cursor-pointer"/>
+              <input id="f-secondary-hex" class="flex-1 rounded-lg border-outline-variant bg-surface-container-low text-sm" value="#F5A623"/>
             </div>
           </div>
         </div>
@@ -62,8 +62,7 @@
             <label class="text-sm text-on-surface-variant">Background</label>
             <select id="f-bg" class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low">
               <option value="simple_white">Simple white</option>
-              <option value="soft_color">Soft color wash</option>
-              <option value="patterned">Light pattern</option>
+              <option value="solid_color">Solid color</option>
             </select>
           </div>
           <div>
@@ -76,15 +75,13 @@
             </select>
           </div>
         </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="text-sm text-on-surface-variant">Typography</label>
-            <input id="f-type" class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low" placeholder="Modern Rounded"/>
-          </div>
-          <div>
-            <label class="text-sm text-on-surface-variant">Layout</label>
-            <input id="f-layout" class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low" placeholder="Clean & Educational"/>
-          </div>
+        <div>
+          <label class="text-sm text-on-surface-variant">Typography</label>
+          <input type="hidden" id="f-type" value="Nunito"/>
+          <div id="font-picker" class="mt-2 grid grid-cols-2 gap-2"></div>
+          <p id="font-sample" class="mt-3 px-3 py-2.5 rounded-lg bg-surface-container-low border border-outline-variant/40 text-on-surface text-lg leading-snug">
+            The quick brown fox jumps over the lazy dog
+          </p>
         </div>
         <div>
           <label class="text-sm text-on-surface-variant">Style instructions</label>
@@ -120,6 +117,17 @@
   XplainLayout.init({ active: "identities", title: "Identities" });
 
   let logoData = null;
+  const FONT_OPTIONS = [
+    "Nunito",
+    "Space Grotesk",
+    "Inter",
+    "Poppins",
+    "Roboto",
+    "Open Sans",
+    "Montserrat",
+    "Lora",
+    "Comic Neue",
+  ];
 
   function syncColor(pickerId, hexId) {
     const p = document.getElementById(pickerId);
@@ -132,17 +140,47 @@
   syncColor("f-primary", "f-primary-hex");
   syncColor("f-secondary", "f-secondary-hex");
 
+  function setTypography(font) {
+    const chosen = FONT_OPTIONS.includes(font) ? font : "Nunito";
+    document.getElementById("f-type").value = chosen;
+    const sample = document.getElementById("font-sample");
+    sample.style.fontFamily = `"${chosen}", sans-serif`;
+    document.querySelectorAll(".font-option").forEach((btn) => {
+      const on = btn.dataset.font === chosen;
+      btn.classList.toggle("border-primary", on);
+      btn.classList.toggle("bg-primary-container/30", on);
+      btn.classList.toggle("border-outline-variant", !on);
+      btn.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+
+  function renderFontPicker() {
+    document.getElementById("font-picker").innerHTML = FONT_OPTIONS.map(
+      (font) => `
+<button type="button" class="font-option text-left px-3 py-2.5 rounded-lg border border-outline-variant hover:border-primary transition-colors" data-font="${font}" aria-pressed="false">
+  <span class="block text-base text-on-surface leading-tight" style="font-family:'${font}',sans-serif">${font}</span>
+  <span class="block text-xs text-on-surface-variant mt-0.5" style="font-family:'${font}',sans-serif">Aa Bb Cc 123</span>
+</button>`
+    ).join("");
+    document.querySelectorAll(".font-option").forEach((btn) => {
+      btn.addEventListener("click", () => setTypography(btn.dataset.font));
+    });
+    setTypography(document.getElementById("f-type").value || "Nunito");
+  }
+  renderFontPicker();
+
   function openModal(id) {
     logoData = null;
     document.getElementById("identity-form").reset();
     document.getElementById("identity-id").value = "";
     document.getElementById("logo-preview").innerHTML =
       '<span class="material-symbols-outlined text-on-surface-variant">image</span>';
-    document.getElementById("f-primary").value = "#622ce5";
-    document.getElementById("f-primary-hex").value = "#622ce5";
-    document.getElementById("f-secondary").value = "#feae2c";
-    document.getElementById("f-secondary-hex").value = "#feae2c";
+    document.getElementById("f-primary").value = "#7B4DFF";
+    document.getElementById("f-primary-hex").value = "#7B4DFF";
+    document.getElementById("f-secondary").value = "#F5A623";
+    document.getElementById("f-secondary-hex").value = "#F5A623";
     document.getElementById("modal-title").textContent = "New Identity";
+    setTypography("Nunito");
 
     if (id) {
       const i = XplainStore.getIdentity(id);
@@ -154,10 +192,10 @@
       document.getElementById("f-primary-hex").value = i.primary;
       document.getElementById("f-secondary").value = i.secondary;
       document.getElementById("f-secondary-hex").value = i.secondary;
-      document.getElementById("f-bg").value = i.background_style;
+      const bg = i.background_style === "simple_white" ? "simple_white" : "solid_color";
+      document.getElementById("f-bg").value = bg;
       document.getElementById("f-image").value = i.image_style;
-      document.getElementById("f-type").value = i.typography || "";
-      document.getElementById("f-layout").value = i.layout || "";
+      setTypography(i.typography);
       document.getElementById("f-instructions").value = i.instructions || "";
       document.getElementById("f-default").checked =
         XplainStore.getTeacher().default_identity_id === i.id;
@@ -198,12 +236,13 @@
     <dl class="space-y-1.5 text-sm text-on-surface-variant">
       <div class="flex justify-between gap-2"><dt>Background</dt><dd class="text-on-surface text-right">${XplainUI.escapeHtml(XplainChat.bgLabel(i.background_style))}</dd></div>
       <div class="flex justify-between gap-2"><dt>Images</dt><dd class="text-on-surface text-right">${XplainUI.escapeHtml(XplainChat.imageLabel(i.image_style))}</dd></div>
-      <div class="flex justify-between gap-2"><dt>Type</dt><dd class="text-on-surface text-right truncate">${XplainUI.escapeHtml(i.typography || "—")}</dd></div>
+      <div class="flex justify-between gap-2"><dt>Type</dt><dd class="text-on-surface text-right truncate" style="font-family:'${XplainUI.escapeHtml(i.typography || "Nunito")}',sans-serif">${XplainUI.escapeHtml(i.typography || "—")}</dd></div>
     </dl>
     ${i.instructions ? `<p class="mt-3 text-xs text-on-surface-variant line-clamp-2">${XplainUI.escapeHtml(i.instructions)}</p>` : ""}
   </div>
-  <div class="px-5 py-3 border-t border-outline-variant/40 bg-surface-container-lowest text-xs text-on-surface-variant">
-    Primary ${i.primary} · Secondary ${i.secondary}
+  <div class="px-5 py-3 border-t border-outline-variant/40 bg-surface-container-lowest text-xs text-on-surface-variant flex items-center gap-4">
+    <span class="inline-flex items-center gap-1.5">Primary <span class="inline-block w-4 h-4 rounded border border-outline-variant/50" style="background:${i.primary}" title="${i.primary}"></span></span>
+    <span class="inline-flex items-center gap-1.5">Secondary <span class="inline-block w-4 h-4 rounded border border-outline-variant/50" style="background:${i.secondary}" title="${i.secondary}"></span></span>
   </div>
 </div>`).join("") || `<p class="text-on-surface-variant col-span-full">No identities yet. Create one to use in chat.</p>`;
 
@@ -245,8 +284,7 @@
       secondary: document.getElementById("f-secondary-hex").value.trim(),
       background_style: document.getElementById("f-bg").value,
       image_style: document.getElementById("f-image").value,
-      typography: document.getElementById("f-type").value.trim(),
-      layout: document.getElementById("f-layout").value.trim(),
+      typography: document.getElementById("f-type").value,
       instructions: document.getElementById("f-instructions").value.trim(),
       logo_data_url: logoData,
     };

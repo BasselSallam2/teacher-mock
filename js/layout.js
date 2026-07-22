@@ -1,28 +1,28 @@
 (function () {
   const TAILWIND_COLORS = {
     "error-container": "#ffdad6",
-    "surface-tint": "#6733ea",
+    "surface-tint": "#7B4DFF",
     success: "#10B981",
     surface: "#FFFFFF",
     "on-background": "#110D2B",
     background: "#F4F1FF",
     "inverse-surface": "#302c4c",
     "border-subtle": "rgba(123, 77, 255, 0.20)",
-    "secondary-container": "#feae2c",
+    "secondary-container": "#F5A623",
     "on-tertiary": "#ffffff",
     "surface-container-low": "#f6f1ff",
     "text-secondary": "#3D3760",
-    tertiary: "#9d2d6c",
+    tertiary: "#9C2C6B",
     "surface-dim": "#dcd5fe",
     "on-tertiary-fixed": "#3d0025",
-    "on-surface-variant": "#494456",
+    "on-surface-variant": "#3D3760",
     "on-secondary": "#ffffff",
     "on-error-container": "#93000a",
-    "on-primary-fixed-variant": "#4e00d1",
+    "on-primary-fixed-variant": "#5A2EE0",
     "on-primary": "#ffffff",
     "primary-fixed": "#e7deff",
     "on-secondary-fixed": "#291800",
-    primary: "#622ce5",
+    primary: "#7B4DFF",
     "secondary-fixed": "#ffddb4",
     "inverse-on-surface": "#f4eeff",
     "tertiary-container": "#bc4685",
@@ -32,7 +32,7 @@
     "surface-container-high": "#ebe5ff",
     error: "#FF4B5C",
     "surface-bright": "#fcf8ff",
-    secondary: "#835500",
+    secondary: "#D97706",
     "surface-container": "#f1ebff",
     "on-secondary-fixed-variant": "#633f00",
     info: "#3B82F6",
@@ -40,13 +40,13 @@
     "on-secondary-container": "#6b4500",
     "on-primary-fixed": "#1f005f",
     "surface-variant": "#e5deff",
-    "primary-container": "#7b4dff",
+    "primary-container": "#7B4DFF",
     "on-tertiary-fixed-variant": "#841658",
     "on-tertiary-container": "#fff6f7",
     "tertiary-fixed-dim": "#ffafd2",
     outline: "#7a7487",
     "on-error": "#ffffff",
-    "on-surface": "#1b1736",
+    "on-surface": "#110D2B",
     "outline-variant": "#cac3d8",
     "surface-container-highest": "#e5deff",
     "tertiary-fixed": "#ffd8e7",
@@ -77,12 +77,10 @@
     return `
 <aside id="sidebar" class="mobile-drawer md:translate-x-0 fixed md:sticky top-0 left-0 z-50 md:z-40 flex flex-col h-screen w-[320px] bg-surface-container-low border-r border-outline-variant p-2 space-y-2 shrink-0">
   <div class="p-4 mb-2 flex items-center gap-3">
-    <div class="w-10 h-10 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center shrink-0 font-bold">
-      ${teacher.logo_data_url ? `<img src="${teacher.logo_data_url}" alt="" class="w-full h-full object-cover rounded-lg"/>` : `<span class="material-symbols-outlined">school</span>`}
-    </div>
+    <img src="assets/logo.png" alt="getXplain" class="w-10 h-10 rounded-lg object-contain shrink-0 bg-white border border-outline-variant/40 p-0.5"/>
     <div class="min-w-0">
-      <h2 class="font-semibold text-on-surface text-[16px] leading-tight truncate">${XplainUI.escapeHtml(teacher.school_name || "Institution Authority")}</h2>
-      <p class="text-xs text-on-surface-variant">Academic Workspace</p>
+      <h2 class="font-headline-md font-bold text-on-surface text-[17px] leading-tight truncate">get<span class="text-primary">X</span>plain</h2>
+      <p class="text-xs text-on-surface-variant">Teacher Workspace</p>
     </div>
     <button class="md:hidden ml-auto p-1" id="close-drawer"><span class="material-symbols-outlined">close</span></button>
   </div>
@@ -136,7 +134,7 @@
     <button class="md:hidden p-2 -ml-2 text-on-surface hover:bg-surface-container-high rounded-full" id="open-drawer">
       <span class="material-symbols-outlined">menu</span>
     </button>
-    <span class="font-bold text-primary text-xl">Xplain AI</span>
+    <span class="font-bold text-primary text-xl tracking-tight">getXplain</span>
     ${opts.title ? `<span class="hidden md:inline text-on-surface-variant mx-2">/</span><h2 class="hidden md:block font-semibold text-on-surface text-2xl">${opts.title}</h2>` : ""}
     <nav class="hidden lg:flex gap-4 ml-6">
       <a class="text-sm text-on-surface-variant hover:bg-surface-container-high px-2 py-1 rounded" href="#">Help</a>
@@ -164,7 +162,7 @@
     return `
 <footer class="w-full py-8 bg-surface border-t border-outline-variant mt-auto">
   <div class="flex flex-col md:flex-row justify-between items-center px-4 md:px-16 max-w-7xl mx-auto gap-4">
-    <p class="text-sm text-on-surface-variant">© 2026 Xplain AI Teacher Tools. All academic rights reserved.</p>
+    <p class="text-sm text-on-surface-variant">© 2026 getXplain Teacher Tools. All academic rights reserved.</p>
     <div class="flex gap-6 text-sm">
       <a class="text-on-surface-variant hover:text-primary underline opacity-70" href="#">Privacy Policy</a>
       <a class="text-on-surface-variant hover:text-primary underline opacity-70" href="#">Terms of Service</a>
@@ -195,14 +193,15 @@
                 base: "4px",
               },
               fontFamily: {
-                "headline-xl": ["Inter"],
-                "label-md": ["Inter"],
-                "body-lg": ["Inter"],
-                "body-md": ["Inter"],
-                "headline-md": ["Inter"],
-                "label-sm": ["Inter"],
-                "headline-lg-mobile": ["Inter"],
-                "headline-lg": ["Inter"],
+                "headline-xl": ["Nunito", "sans-serif"],
+                "label-md": ["Space Grotesk", "sans-serif"],
+                "body-lg": ["Space Grotesk", "sans-serif"],
+                "body-md": ["Space Grotesk", "sans-serif"],
+                "headline-md": ["Nunito", "sans-serif"],
+                "label-sm": ["Space Grotesk", "sans-serif"],
+                "headline-lg-mobile": ["Nunito", "sans-serif"],
+                "headline-lg": ["Nunito", "sans-serif"],
+                sans: ["Space Grotesk", "sans-serif"],
               },
             },
           },

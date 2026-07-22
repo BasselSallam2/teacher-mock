@@ -98,6 +98,15 @@
       }
 
       const slides = slidePlaceholdersFromPlan(session.plan);
+      const attachments = session.image_attachments || {};
+      slides.forEach((s) => {
+        const key = s.section_id || s.id;
+        if ((attachments[key]?.images || []).length || (attachments[s.id]?.images || []).length) {
+          s.has_teacher_images = true;
+          const att = attachments[key] || attachments[s.id];
+          if (att?.prompt) s.subtitle = att.prompt;
+        }
+      });
       const lessonId = XplainStore.uid("l");
       const lesson = {
         id: lessonId,
@@ -267,8 +276,175 @@
       }
       XplainStore.appendMessage(sessionId, {
         role: "assistant",
-        text: `Updated \`${sectionId}\` only. Other pages/assets unchanged.`,
+        text: "Updated `" + sectionId + "` only. Other pages/assets unchanged.",
       });
+    },
+
+    getImageAttachment(sessionId, targetId) {
+      const sess = XplainStore.getSession(sessionId);
+      const map = sess.image_attachments || {};
+      return map[targetId] || { prompt: "", images: [] };
+    },
+
+    hasImageAttachment(sessionId, targetId) {
+      const att = this.getImageAttachment(sessionId, targetId);
+      return !!(att.images && att.images.length);
+    },
+
+    async addImageToTarget(sessionId, targetId, file) {
+      XplainStore.ensureImagesFolder();
+      const item = await XplainMedia.simulateUpload(file, {
+        folder_id: "f-images",
+        images_only: true,
+      });
+      if (!item) return null;
+      await new Promise((r) => setTimeout(r, 700));
+      const media = XplainStore.getMediaItem(item.id);
+      const sess = XplainStore.getSession(sessionId);
+      const map = { ...(sess.image_attachments || {}) };
+      const cur = map[targetId] || { prompt: "", images: [] };
+      const img = {
+        id: XplainStore.uid("imgd"),
+        media_id: item.id,
+        name: media?.display_name || file.name || "image",
+        preview_url: media?.data_url || null,
+      };
+      map[targetId] = {
+        prompt: cur.prompt || "",
+        images: [...(cur.images || []), img],
+      };
+      XplainStore.updateSession(sessionId, { image_attachments: map });
+      return img;
+    },
+
+    removeImageFromTarget(sessionId, targetId, imageId) {
+      const sess = XplainStore.getSession(sessionId);
+      const map = { ...(sess.image_attachments || {}) };
+      const cur = map[targetId];
+      if (!cur) return;
+      map[targetId] = {
+        ...cur,
+        images: (cur.images || []).filter((i) => i.id !== imageId),
+      };
+      XplainStore.updateSession(sessionId, { image_attachments: map });
+    },
+
+    async confirmImageAttachment(sessionId, targetId, prompt) {
+      const text = (prompt || "").trim();
+      if (!text) {
+        XplainUI.toast("Add a prompt", "Tell the AI what to do with the image(s).", {
+          icon: "edit",
+        });
+        return false;
+      }
+      const sess = XplainStore.getSession(sessionId);
+      const map = { ...(sess.image_attachments || {}) };
+      const cur = map[targetId] || { prompt: "", images: [] };
+      if (!(cur.images || []).length) {
+        XplainUI.toast("Upload an image", "Add at least one image first.", {
+          icon: "image",
+        });
+        return false;
+      }
+      map[targetId] = { ...cur, prompt: text };
+      XplainStore.updateSession(sessionId, { image_attachments: map });
+
+      const names = cur.images.map((i) => i.name).join(", ");
+      XplainStore.appendMessage(sessionId, {
+        role: "user",
+        text: `Image for ${targetId} (${names}):\n${text}`,
+      });
+      await new Promise((r) => setTimeout(r, 500));
+
+      if (sess.plan?.pages) {
+        const plan = clone(sess.plan);
+        const page = plan.pages.find((p) => p.id === targetId);
+        if (page) {
+          page.visual_note = text;
+          page.has_teacher_images = true;
+          page.body_md =
+            (page.body_md || "") +
+            "\n\n*[Image]* " +
+            cur.images.map((i) => "**" + i.name + "**").join(", ") +
+            " — " +
+            text;
+        }
+        XplainStore.updateSession(sessionId, { plan });
+      }
+
+      const slides = sess.slides || [];
+      if (slides.length) {
+        const nextSlides = clone(slides);
+        const slide = nextSlides.find(
+          (s) => s.id === targetId || s.section_id === targetId
+        );
+        if (slide) {
+          slide.subtitle = text;
+          slide.has_teacher_images = true;
+        }
+        XplainStore.updateSession(sessionId, { slides: nextSlides });
+      }
+
+      if (sess.readyContent) {
+        const content = clone(sess.readyContent);
+        const sec = (content.sections || []).find((s) => s.id === targetId);
+        if (sec) {
+          sec.body_md =
+            (sec.body_md || "") +
+            "\n\n*[Image]* " +
+            cur.images.map((i) => "**" + i.name + "**").join(", ") +
+            " — " +
+            text;
+          sec.source = "Teacher image: " + names;
+          sec.has_teacher_images = true;
+        }
+        if (content.slides?.length) {
+          const slide = content.slides.find(
+            (s) => s.id === targetId || s.section_id === targetId
+          );
+          if (slide) {
+            slide.subtitle = text;
+            slide.has_teacher_images = true;
+          }
+        }
+        XplainStore.updateSession(sessionId, { readyContent: content });
+        if (sess.lesson_id) {
+          const lesson = XplainStore.getLesson(sess.lesson_id);
+          if (lesson) {
+            XplainStore.upsertLesson({
+              ...lesson,
+              content,
+              updated_at: new Date().toISOString(),
+            });
+          }
+        }
+      }
+
+      XplainStore.appendMessage(sessionId, {
+        role: "assistant",
+        text:
+          "Saved image directions for this item:\n\n• " +
+          text +
+          "\n\nI'll use " +
+          cur.images.length +
+          " image(s).",
+      });
+      XplainUI.toast("Saved", "Image directions updated", { icon: "image" });
+      return true;
+    },
+
+    // Keep approve compatible: apply any attachments that aren't on pages yet
+    async applyImageDirectives(sessionId) {
+      const sess = XplainStore.getSession(sessionId);
+      const map = sess.image_attachments || {};
+      const entries = Object.entries(map).filter(
+        ([, v]) => v.prompt && (v.images || []).length
+      );
+      if (!entries.length) return false;
+      for (const [targetId, att] of entries) {
+        await this.confirmImageAttachment(sessionId, targetId, att.prompt);
+      }
+      return true;
     },
   };
 

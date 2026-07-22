@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Lesson Workspace - Xplain AI</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="css/app.css"/>
 </head>
@@ -13,47 +13,85 @@
 <div id="app-shell"></div>
 <template id="page-template">
   <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative min-h-0">
-    <section id="chat-panel" class="w-full md:w-[min(52%,600px)] xl:w-[640px] shrink-0 border-r border-outline-variant bg-surface flex flex-col h-full min-h-0 z-10">
-      <header class="px-5 py-4 border-b border-outline-variant/80 bg-surface-container-lowest flex items-center justify-between shrink-0">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container shadow-sm">
-            <span class="material-symbols-outlined text-[22px]">smart_toy</span>
+    <section id="chat-panel" class="w-full md:w-[min(36%,400px)] xl:w-[420px] shrink-0 border-r border-outline-variant bg-surface flex flex-col h-full min-h-0 z-10 transition-[width] duration-200" dir="ltr">
+      <header class="px-3.5 py-2.5 border-b border-outline-variant/80 bg-surface flex items-center justify-between shrink-0 gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <div class="w-7 h-7 rounded-md bg-primary-container flex items-center justify-center text-on-primary-container shrink-0">
+            <span class="material-symbols-outlined text-[16px]">smart_toy</span>
           </div>
-          <div>
-            <h3 class="font-semibold text-base text-on-surface">Xplain AI Agent</h3>
-            <span class="text-xs text-secondary flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-secondary"></span> Ready to help</span>
+          <div class="min-w-0">
+            <h3 class="font-semibold text-[13px] text-on-surface truncate leading-tight">Xplain AI Agent</h3>
+            <span class="text-[10px] text-secondary flex items-center gap-1"><span class="w-1 h-1 rounded-full bg-secondary"></span> Ready</span>
           </div>
         </div>
-        <a href="index.html" class="text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-full p-2 transition-colors" title="Home">
-          <span class="material-symbols-outlined">home</span>
-        </a>
-      </header>
-      <div id="chat-messages" class="flex-1 overflow-y-auto px-5 py-5 space-y-5 min-h-0 scroll-smooth"></div>
-      <div id="section-chips" class="px-5 pt-2 flex flex-wrap gap-2 empty:hidden shrink-0"></div>
-      <div class="px-5 py-4 bg-surface border-t border-outline-variant/80 shrink-0 relative">
-        <div id="mention-menu" class="hidden absolute bottom-full left-5 right-5 mb-2 bg-surface border border-outline-variant rounded-xl shadow-lg mention-menu z-20 overflow-hidden"></div>
-        <div class="relative flex items-end gap-1 bg-surface-container-lowest border border-outline-variant rounded-2xl focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 transition-shadow">
-          <button type="button" id="attach-btn" class="p-3 text-on-surface-variant hover:text-primary shrink-0" title="@ mention">
-            <span class="material-symbols-outlined text-xl">alternate_email</span>
+        <div class="flex items-center gap-0.5 shrink-0">
+          <button type="button" id="toggle-preview" class="text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-md p-1.5 transition-colors" title="Hide preview">
+            <span class="material-symbols-outlined text-[18px]" id="toggle-preview-icon">right_panel_close</span>
           </button>
-          <textarea id="chat-input" rows="2" class="w-full bg-transparent border-none focus:ring-0 text-[15px] leading-relaxed py-3 px-1 resize-none max-h-32" placeholder="Type a message or use @…" autocomplete="off"></textarea>
-          <button type="button" id="chat-send" class="p-2.5 bg-primary text-on-primary rounded-xl m-1.5 hover:opacity-90 shrink-0 shadow-sm">
-            <span class="material-symbols-outlined text-lg">send</span>
+          <a href="index.html" class="text-on-surface-variant hover:bg-surface-container hover:text-on-surface rounded-md p-1.5 transition-colors" title="Home">
+            <span class="material-symbols-outlined text-[18px]">home</span>
+          </a>
+        </div>
+      </header>
+      <div id="chat-messages" class="flex-1 overflow-y-auto px-3.5 py-3 space-y-3 min-h-0 scroll-smooth" dir="ltr"></div>
+      <div id="section-chips" class="px-3.5 pt-1 flex flex-wrap gap-1 empty:hidden shrink-0"></div>
+      <div class="px-3 py-2.5 bg-surface border-t border-outline-variant/80 shrink-0 relative">
+        <div id="mention-menu" class="hidden absolute bottom-full left-3 right-3 mb-1.5 bg-surface border border-outline-variant rounded-lg shadow-lg mention-menu z-20 overflow-hidden"></div>
+        <div class="relative flex items-end gap-0.5 bg-surface border border-outline-variant rounded-lg focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20">
+          <button type="button" id="attach-btn" class="p-2 text-on-surface-variant hover:text-primary shrink-0" title="@ mention">
+            <span class="material-symbols-outlined text-[18px]">alternate_email</span>
+          </button>
+          <textarea id="chat-input" rows="1" class="w-full bg-transparent border-none focus:ring-0 text-[13px] leading-5 py-2 px-0.5 resize-none max-h-24 min-h-[36px]" placeholder="Message or @mention…" autocomplete="off" dir="ltr"></textarea>
+          <button type="button" id="chat-send" class="p-1.5 bg-primary text-on-primary rounded-md m-1 hover:opacity-90 shrink-0">
+            <span class="material-symbols-outlined text-[16px]">send</span>
           </button>
         </div>
       </div>
     </section>
-    <section class="flex-1 bg-surface-container-lowest h-full overflow-y-auto relative flex flex-col min-h-0 min-w-0">
+    <section id="preview-panel" class="flex-1 bg-surface-container-lowest h-full overflow-y-auto relative flex flex-col min-h-0 min-w-0 transition-all duration-200">
       <div id="right-pane" class="flex-1 flex flex-col min-h-0"></div>
     </section>
+    <button type="button" id="reopen-preview" class="hidden fixed top-1/2 right-0 -translate-y-1/2 z-20 bg-surface border border-outline-variant border-r-0 rounded-l-xl px-1.5 py-3 shadow-md text-on-surface-variant hover:text-primary hover:bg-surface-container" title="Show preview">
+      <span class="material-symbols-outlined text-[20px]">left_panel_open</span>
+    </button>
   </main>
 </template>
+<div id="image-attach-modal" class="hidden fixed inset-0 z-[70] bg-on-background/50 backdrop-blur-sm flex items-center justify-center p-4">
+  <div class="bg-surface rounded-2xl w-full max-w-lg border border-outline-variant/30 shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div class="p-4 border-b border-outline-variant/30 flex items-center justify-between shrink-0">
+      <h3 class="font-semibold text-on-surface" id="img-modal-title">Add image</h3>
+      <button type="button" id="img-modal-close" class="p-1 rounded-full hover:bg-surface-container text-on-surface-variant">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="p-4 space-y-4 overflow-y-auto flex-1 min-h-0">
+      <div id="img-modal-previews" class="flex flex-wrap gap-2 empty:hidden"></div>
+      <label class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-outline-variant rounded-xl p-6 cursor-pointer hover:border-primary hover:bg-surface-container-low transition-colors">
+        <span class="material-symbols-outlined text-3xl text-primary">add_photo_alternate</span>
+        <span class="text-sm text-on-surface">Upload image</span>
+        <span class="text-xs text-on-surface-variant">PNG, JPG, GIF, WebP</span>
+        <input type="file" id="img-modal-file" class="hidden" accept="image/png,image/jpeg,image/gif,image/webp,.png,.jpg,.jpeg,.gif,.webp" multiple/>
+      </label>
+      <div>
+        <label class="text-sm text-on-surface-variant" for="img-modal-prompt">What should AI do with these images?</label>
+        <textarea id="img-modal-prompt" rows="6" class="mt-1.5 w-full rounded-xl border-outline-variant bg-surface-container-low text-sm leading-relaxed" placeholder="e.g. Use this image under the book store example&#10;Use this image instead of the current one&#10;Use this image at the left side of the presentation"></textarea>
+      </div>
+    </div>
+    <div class="p-4 border-t border-outline-variant/30 flex justify-end gap-2 shrink-0">
+      <button type="button" id="img-modal-cancel" class="px-4 py-2 rounded-lg text-sm text-on-surface-variant hover:bg-surface-container">Cancel</button>
+      <button type="button" id="img-modal-confirm" class="px-4 py-2 rounded-lg text-sm bg-primary text-on-primary">Confirm</button>
+    </div>
+  </div>
+</div>
 <script src="js/seed.js"></script>
 <script src="js/store.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/layout.js"></script>
 <script src="js/chat.js"></script>
+<script src="js/media.js"></script>
 <script src="js/media-picker.js"></script>
+<script src="js/identity-picker.js"></script>
+<script src="js/class-picker.js"></script>
 <script src="js/workspace.js"></script>
 <script>
   XplainLayout.init({
@@ -68,6 +106,34 @@
   let session = XplainWorkspace.ensureSessionFromUrl();
   let selectedIds = new Set(session.selected_section_ids || []);
   let sending = false;
+  let previewCollapsed = sessionStorage.getItem("xplain-preview-collapsed") === "1";
+
+  function applyPreviewLayout() {
+    const chat = document.getElementById("chat-panel");
+    const preview = document.getElementById("preview-panel");
+    const reopen = document.getElementById("reopen-preview");
+    const icon = document.getElementById("toggle-preview-icon");
+    const toggle = document.getElementById("toggle-preview");
+    if (previewCollapsed) {
+      preview.classList.add("hidden");
+      chat.classList.add("chat-expanded");
+      reopen.classList.remove("hidden");
+      icon.textContent = "right_panel_open";
+      toggle.title = "Show preview";
+    } else {
+      preview.classList.remove("hidden");
+      chat.classList.remove("chat-expanded");
+      reopen.classList.add("hidden");
+      icon.textContent = "right_panel_close";
+      toggle.title = "Hide preview";
+    }
+    sessionStorage.setItem("xplain-preview-collapsed", previewCollapsed ? "1" : "0");
+  }
+
+  function togglePreview() {
+    previewCollapsed = !previewCollapsed;
+    applyPreviewLayout();
+  }
 
   function syncSelected() {
     XplainStore.updateSession(session.id, {
@@ -120,42 +186,77 @@
     );
   }
 
+  function isConfirmPlanText(text) {
+    return /I have enough information to create your lesson plan/i.test(text || "");
+  }
+
   function renderMessages() {
     session = XplainStore.getSession(session.id);
     const el = document.getElementById("chat-messages");
-    el.innerHTML = session.messages
-      .map((m) => {
+    const messages = session.messages || [];
+    const last = messages[messages.length - 1];
+    if (
+      last &&
+      (last.meta?.confirm_plan || isConfirmPlanText(last.text)) &&
+      !session.plan &&
+      session.phase !== "generating_plan" &&
+      session.phase !== "building" &&
+      session.phase !== "ready" &&
+      !session.awaiting_plan_confirm
+    ) {
+      XplainStore.updateSession(session.id, {
+        awaiting_plan_confirm: true,
+        agent_step: "confirm",
+      });
+      session = XplainStore.getSession(session.id);
+    }
+    const lastConfirmIdx = messages.reduce(
+      (acc, x, i) => (x.meta?.confirm_plan || isConfirmPlanText(x.text) ? i : acc),
+      -1
+    );
+    el.innerHTML = messages
+      .map((m, msgIdx) => {
         if (m.role === "user") {
-          return `<div class="flex items-start gap-3 w-full justify-end pl-8">
-            <div class="chat-bubble-user max-w-[92%] rounded-2xl rounded-tr-md px-4 py-3 text-[15px] leading-relaxed whitespace-pre-wrap shadow-sm">${XplainUI.escapeHtml(m.text)}</div>
-            <div class="w-8 h-8 rounded-full bg-surface-variant shrink-0 flex items-center justify-center mt-0.5 border border-outline-variant">
-              <span class="material-symbols-outlined text-[16px]">person</span>
-            </div>
+          return `<div class="chat-row chat-row-user w-full" dir="ltr">
+            <div class="chat-meta">You</div>
+            <div class="chat-bubble-user">${XplainUI.escapeHtml(m.text)}</div>
           </div>`;
         }
 
         let extras = "";
-        if (m.meta?.confirm_plan) {
-          extras += `<div class="flex flex-wrap gap-2">
-              <button type="button" class="btn-create-plan px-4 py-2.5 bg-primary text-on-primary rounded-xl text-sm font-semibold shadow-sm hover:opacity-90">Create Lesson Plan</button>
-              <button type="button" class="btn-continue-disc px-4 py-2.5 border border-outline-variant rounded-xl text-sm text-on-surface hover:bg-surface-container">Continue Discussion</button>
+        if (m.meta?.confirm_plan || isConfirmPlanText(m.text)) {
+          const planBusy =
+            session.phase === "generating_plan" ||
+            session.phase === "building" ||
+            session.phase === "ready" ||
+            !!(session.plan && session.agent_step === "plan_ready") ||
+            messages.some((x) => x.meta?.draft || x.meta?.generating);
+          // Sessions start in phase "planning"/intake — do not treat that as started.
+          // Show CTAs only while this confirm is still the latest chat turn.
+          const showConfirmBtns =
+            !planBusy && msgIdx === lastConfirmIdx && msgIdx === messages.length - 1;
+          if (showConfirmBtns) {
+            extras += `<div class="flex flex-wrap gap-2 mt-1">
+              <button type="button" class="btn-create-plan px-3.5 py-2 bg-primary text-on-primary rounded-lg text-sm font-medium hover:opacity-90">Make The Plan</button>
+              <button type="button" class="btn-continue-disc px-3.5 py-2 border border-outline-variant rounded-lg text-sm text-on-surface hover:bg-surface-container">Continue discussion</button>
             </div>`;
+          }
         }
         if (m.meta?.selected_sources?.length) {
           extras += `<div class="chat-card overflow-hidden">
-            <div class="px-3.5 py-2 text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant bg-surface-container-low border-b border-outline-variant/40 flex items-center gap-2">
-              <span class="material-symbols-outlined text-[16px] text-secondary">check_circle</span>
+            <div class="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant bg-surface-container-low border-b border-outline-variant/40 flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[15px] text-secondary">check_circle</span>
               ${m.meta.selected_sources.length} source${m.meta.selected_sources.length === 1 ? "" : "s"} selected
             </div>
             <ul class="divide-y divide-outline-variant/35">${m.meta.selected_sources
               .map(
-                (s) => `<li class="flex items-center gap-3 px-3.5 py-3">
-                <span class="w-10 h-10 rounded-xl bg-primary-container/35 text-primary flex items-center justify-center shrink-0">
-                  <span class="material-symbols-outlined text-[22px]">${XplainUI.escapeHtml(s.icon || "description")}</span>
+                (s) => `<li class="flex items-center gap-2.5 px-3 py-2">
+                <span class="w-8 h-8 rounded-lg bg-primary-container/35 text-primary flex items-center justify-center shrink-0">
+                  <span class="material-symbols-outlined text-[18px]">${XplainUI.escapeHtml(s.icon || "description")}</span>
                 </span>
-                <span class="min-w-0 flex-1">
-                  <span class="block text-sm font-semibold text-on-surface truncate">${XplainUI.escapeHtml(s.label)}</span>
-                  ${s.sub ? `<span class="inline-block mt-0.5 text-[11px] font-medium text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded">${XplainUI.escapeHtml(s.sub)}</span>` : ""}
+                <span class="min-w-0 flex-1 text-left">
+                  <span class="block text-sm font-medium text-on-surface truncate">${XplainUI.escapeHtml(s.label)}</span>
+                  ${s.sub ? `<span class="block text-[11px] text-on-surface-variant truncate">${XplainUI.escapeHtml(s.sub)}</span>` : ""}
                 </span>
               </li>`
               )
@@ -164,30 +265,30 @@
         }
         if (m.meta?.open_media_picker) {
           const hasSelected = !!m.meta?.selected_sources?.length;
-          extras += `<div class="space-y-3">
+          extras += `<div class="space-y-2">
             <button type="button" class="open-media-picker chat-cta ${hasSelected ? "chat-cta-secondary" : "chat-cta-primary"}">
-              <span class="material-symbols-outlined text-[22px]">${hasSelected ? "add" : "folder_open"}</span>
+              <span class="material-symbols-outlined text-[20px]">${hasSelected ? "add" : "folder_open"}</span>
               <span class="flex-1 text-left">
-                <span class="block font-semibold">${hasSelected ? "Add more from library" : "Browse Media Library"}</span>
-                <span class="block text-xs opacity-80 font-normal mt-0.5">${hasSelected ? "Search folders and pick more files" : "Search folders · select one or more files"}</span>
+                <span class="block text-sm font-semibold">${hasSelected ? "Add more from library" : "Browse Media Library"}</span>
+                <span class="block text-[11px] opacity-80 font-normal mt-0.5">${hasSelected ? "Search folders and pick more files" : "Search folders · select files"}</span>
               </span>
-              <span class="material-symbols-outlined text-[20px] opacity-70">chevron_right</span>
+              <span class="material-symbols-outlined text-[18px] opacity-70">chevron_right</span>
             </button>
             ${
               (m.meta.recent || []).length
                 ? `<div>
-              <p class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant mb-2 px-0.5">Quick pick · recent</p>
-              <div class="grid gap-2">${m.meta.recent
+              <p class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant mb-1.5 px-0.5">Quick pick</p>
+              <div class="grid gap-1.5">${m.meta.recent
                 .map(
                   (o) => `<button type="button" class="pick-source chat-file-row" data-id="${o.id}">
-                  <span class="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
-                    <span class="material-symbols-outlined text-[20px]">${XplainUI.escapeHtml(o.icon || "description")}</span>
+                  <span class="w-8 h-8 rounded-lg bg-surface-container-high text-on-surface-variant flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-[18px]">${XplainUI.escapeHtml(o.icon || "description")}</span>
                   </span>
                   <span class="min-w-0 flex-1 text-left">
                     <span class="block text-sm font-medium text-on-surface truncate">${XplainUI.escapeHtml(o.label)}</span>
-                    ${o.sub ? `<span class="block text-[11px] text-on-surface-variant">${XplainUI.escapeHtml(o.sub)}</span>` : ""}
+                    ${o.sub ? `<span class="block text-[11px] text-on-surface-variant truncate">${XplainUI.escapeHtml(o.sub)}</span>` : ""}
                   </span>
-                  <span class="material-symbols-outlined text-[18px] text-on-surface-variant">add_circle</span>
+                  <span class="material-symbols-outlined text-[16px] text-on-surface-variant">add_circle</span>
                 </button>`
                 )
                 .join("")}</div>
@@ -198,63 +299,88 @@
         }
         if (m.meta?.pick_sources) {
           extras += `<button type="button" class="open-media-picker chat-cta chat-cta-primary">
-            <span class="material-symbols-outlined text-[22px]">folder_open</span>
-            <span class="flex-1 text-left font-semibold">Browse Media Library</span>
-            <span class="material-symbols-outlined">chevron_right</span>
+            <span class="material-symbols-outlined text-[20px]">folder_open</span>
+            <span class="flex-1 text-left text-sm font-semibold">Browse Media Library</span>
+            <span class="material-symbols-outlined text-[18px]">chevron_right</span>
           </button>`;
         }
         if (m.meta?.pick_identity) {
-          extras += `<div class="space-y-2.5">
-            <p class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant px-0.5">Identity sets</p>
-            ${(m.meta.options || [])
-              .map(
-                (o) => `<button type="button" class="pick-identity chat-brand-card" data-id="${o.id}">
-              <div class="chat-brand-strip">
-                <span style="background:${o.primary || "#622ce5"}"></span>
-                <span style="background:${o.secondary || "#feae2c"}"></span>
-              </div>
-              <div class="flex items-center gap-3 px-3.5 py-3">
-                <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-white shadow-sm" style="background:linear-gradient(135deg,${o.primary || "#622ce5"},${o.secondary || "#feae2c"})">
-                  <span class="material-symbols-outlined text-[22px]">palette</span>
-                </div>
-                <div class="min-w-0 flex-1 text-left">
-                  <span class="block text-sm font-semibold text-on-surface truncate">${XplainUI.escapeHtml(o.label)}</span>
-                  <span class="block text-xs text-on-surface-variant mt-0.5 truncate">${XplainUI.escapeHtml(o.sub || "")}</span>
-                  <span class="mt-1.5 flex items-center gap-1.5">
-                    <span class="w-3.5 h-3.5 rounded-full border border-white/80 shadow-sm ring-1 ring-black/5" style="background:${o.primary || "#622ce5"}"></span>
-                    <span class="w-3.5 h-3.5 rounded-full border border-white/80 shadow-sm ring-1 ring-black/5" style="background:${o.secondary || "#feae2c"}"></span>
-                    <span class="text-[10px] text-on-surface-variant ml-0.5">Brand colors</span>
-                  </span>
-                </div>
-                <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
-              </div>
-            </button>`
-              )
-              .join("")}
-            <a href="identities.html" class="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline px-0.5 pt-0.5">Manage identities <span class="material-symbols-outlined text-[14px]">arrow_forward</span></a>
+          const opts = m.meta.options || [];
+          const quick = opts.slice(0, 3);
+          extras += `<div class="space-y-2">
+            <button type="button" class="open-identity-picker chat-cta chat-cta-primary">
+              <span class="material-symbols-outlined text-[20px]">palette</span>
+              <span class="flex-1 text-left">
+                <span class="block text-sm font-semibold">Browse Identity Gallery</span>
+                <span class="block text-[11px] opacity-80 font-normal mt-0.5">${opts.length} identities · search &amp; select</span>
+              </span>
+              <span class="material-symbols-outlined text-[18px] opacity-70">chevron_right</span>
+            </button>
+            ${
+              quick.length
+                ? `<div>
+              <p class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant mb-1.5 px-0.5">Quick pick</p>
+              <div class="grid gap-1.5">${quick
+                .map(
+                  (o) => `<button type="button" class="pick-identity chat-option-row" data-id="${o.id}">
+                <span class="w-8 h-8 rounded-lg shrink-0 flex" style="background:linear-gradient(135deg,${o.primary || "#7B4DFF"},${o.secondary || "#F5A623"})"></span>
+                <span class="min-w-0 flex-1 text-left">
+                  <span class="block text-sm font-medium text-on-surface truncate">${XplainUI.escapeHtml(o.label)}</span>
+                  <span class="block text-[11px] text-on-surface-variant truncate">${XplainUI.escapeHtml(o.sub || "")}</span>
+                </span>
+              </button>`
+                )
+                .join("")}</div>
+            </div>`
+                : ""
+            }
+            <button type="button" class="open-identity-create inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline px-0.5">
+              <span class="material-symbols-outlined text-[14px]">add</span> Create new identity
+            </button>
           </div>`;
         }
         if (m.meta?.pick_class) {
-          extras += `<div class="space-y-2">${(m.meta.options || [])
-            .map(
-              (o) => `<button type="button" class="pick-class chat-option-row" data-id="${o.id}">
-              <span class="w-9 h-9 rounded-lg bg-surface-container-high flex items-center justify-center shrink-0">
-                <span class="material-symbols-outlined text-[20px] text-on-surface-variant">groups</span>
+          const opts = m.meta.options || [];
+          const quick = opts.slice(0, 3);
+          extras += `<div class="space-y-2">
+            <button type="button" class="open-class-picker chat-cta chat-cta-primary">
+              <span class="material-symbols-outlined text-[20px]">groups</span>
+              <span class="flex-1 text-left">
+                <span class="block text-sm font-semibold">Browse Class Gallery</span>
+                <span class="block text-[11px] opacity-80 font-normal mt-0.5">${opts.length} classes · search &amp; select</span>
               </span>
-              <span class="min-w-0 flex-1 text-left">
-                <span class="block text-sm font-semibold truncate">${XplainUI.escapeHtml(o.label)}</span>
-                <span class="block text-xs text-on-surface-variant truncate">${XplainUI.escapeHtml(o.sub || "")}</span>
-              </span>
-              <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
-            </button>`
-            )
-            .join("")}</div>`;
+              <span class="material-symbols-outlined text-[18px] opacity-70">chevron_right</span>
+            </button>
+            ${
+              quick.length
+                ? `<div>
+              <p class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant mb-1.5 px-0.5">Quick pick</p>
+              <div class="grid gap-1.5">${quick
+                .map(
+                  (o) => `<button type="button" class="pick-class chat-option-row" data-id="${o.id}">
+                <span class="w-8 h-8 rounded-lg shrink-0 flex items-center justify-center text-white" style="background:${o.accent || "#7B4DFF"}">
+                  <span class="material-symbols-outlined text-[18px]">groups</span>
+                </span>
+                <span class="min-w-0 flex-1 text-left">
+                  <span class="block text-sm font-medium text-on-surface truncate">${XplainUI.escapeHtml(o.label)}</span>
+                  <span class="block text-[11px] text-on-surface-variant truncate">${XplainUI.escapeHtml(o.sub || "")}</span>
+                </span>
+              </button>`
+                )
+                .join("")}</div>
+            </div>`
+                : ""
+            }
+            <button type="button" class="open-class-create inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline px-0.5">
+              <span class="material-symbols-outlined text-[14px]">add</span> Create new class
+            </button>
+          </div>`;
         }
         if (m.meta?.quick_replies?.length) {
-          extras += `<div class="flex flex-wrap gap-2">${m.meta.quick_replies
+          extras += `<div class="flex flex-wrap gap-1.5">${m.meta.quick_replies
             .map(
               (q) =>
-                `<button type="button" class="quick-reply px-3.5 py-2 rounded-full border border-outline-variant text-sm font-medium hover:bg-surface-container hover:border-primary/40 transition-colors" data-text="${XplainUI.escapeHtml(q)}">${XplainUI.escapeHtml(q)}</button>`
+                `<button type="button" class="quick-reply chat-chip" data-text="${XplainUI.escapeHtml(q)}">${XplainUI.escapeHtml(q)}</button>`
             )
             .join("")}</div>`;
         }
@@ -262,36 +388,54 @@
           extras += `<div class="flex flex-wrap gap-2">${m.meta.actions
             .map(
               (a) =>
-                `<button type="button" class="chat-action px-4 py-2.5 bg-primary text-on-primary rounded-xl text-sm font-semibold shadow-sm hover:opacity-90" data-action="${a.id}">${XplainUI.escapeHtml(a.label)}</button>`
+                `<button type="button" class="chat-action px-3.5 py-2 bg-primary text-on-primary rounded-lg text-sm font-medium hover:opacity-90" data-action="${a.id}">${XplainUI.escapeHtml(a.label)}</button>`
             )
             .join("")}</div>`;
         }
         if (m.meta?.draft) {
-          extras += `<div class="chat-card flex items-center gap-2 px-3.5 py-2.5 text-sm">
-              <span class="material-symbols-outlined text-secondary text-xl">check_circle</span>
-              <span class="font-medium">Draft ready — review on the right</span>
+          extras += `<div class="chat-card flex items-center gap-2 px-3 py-2 text-sm">
+              <span class="material-symbols-outlined text-secondary text-lg">check_circle</span>
+              <span class="font-medium text-sm">Draft ready — review on the right</span>
             </div>`;
         }
+        if (m.meta?.generating) {
+          const stillGen =
+            session.phase === "generating_plan" || XplainChat.isGenerating(session.id);
+          if (stillGen) {
+            extras += `<div class="chat-card flex items-center gap-2.5 px-3 py-2.5 text-sm">
+              <span class="material-symbols-outlined text-primary text-lg animate-spin">progress_activity</span>
+              <span class="min-w-0">
+                <span class="block font-medium text-sm text-on-surface">Draft in progress</span>
+                <span class="block text-[11px] text-on-surface-variant mt-0.5">Sections appear on the right as they’re ready</span>
+              </span>
+            </div>`;
+          }
+        }
 
-        return `<div class="flex items-start gap-3 w-full pr-4">
-          <div class="w-8 h-8 rounded-full bg-primary-container shrink-0 flex items-center justify-center mt-0.5 shadow-sm">
-            <span class="material-symbols-outlined text-[16px] text-on-primary-container">smart_toy</span>
+        return `<div class="chat-row chat-row-ai w-full" dir="ltr">
+          <div class="chat-meta">
+            <span class="chat-avatar material-symbols-outlined">smart_toy</span>
+            <span>Agent</span>
           </div>
-          <div class="flex-1 min-w-0 space-y-3">
-            <div class="chat-bubble-ai rounded-2xl rounded-tl-md px-4 py-3.5 text-[15px] leading-relaxed text-on-surface whitespace-pre-wrap">
-              ${XplainUI.escapeHtml(m.text)}
-            </div>
-            ${extras ? `<div class="space-y-3">${extras}</div>` : ""}
-          </div>
+          <div class="chat-bubble-ai">${XplainUI.escapeHtml(m.text)}</div>
+          ${extras ? `<div class="chat-extras">${extras}</div>` : ""}
         </div>`;
       })
       .join("");
 
     el.querySelectorAll(".btn-create-plan").forEach((btn) => {
       btn.addEventListener("click", async () => {
+        if (btn.dataset.busy === "1") return;
+        btn.dataset.busy = "1";
         btn.disabled = true;
-        await XplainChat.createLessonPlan(session.id);
-        renderAll();
+        document.querySelectorAll(".btn-create-plan").forEach((b) => {
+          b.disabled = true;
+        });
+        try {
+          await XplainChat.createLessonPlan(session.id);
+        } finally {
+          renderAll();
+        }
       });
     });
     el.querySelectorAll(".btn-continue-disc").forEach((btn) => {
@@ -319,11 +463,43 @@
         renderAll();
       });
     });
+    const openIdentityGallery = (createMode) => {
+      XplainIdentityPicker.open({
+        sessionId: session.id,
+        startCreate: !!createMode,
+        onDone(id) {
+          XplainChat.selectIdentity(session.id, id);
+          setTimeout(renderAll, 250);
+        },
+      });
+    };
+    el.querySelectorAll(".open-identity-picker").forEach((btn) => {
+      btn.addEventListener("click", () => openIdentityGallery(false));
+    });
+    el.querySelectorAll(".open-identity-create").forEach((btn) => {
+      btn.addEventListener("click", () => openIdentityGallery(true));
+    });
     el.querySelectorAll(".pick-identity").forEach((btn) => {
       btn.addEventListener("click", () => {
         XplainChat.selectIdentity(session.id, btn.dataset.id);
         setTimeout(renderAll, 250);
       });
+    });
+    const openClassGallery = (createMode) => {
+      XplainClassPicker.open({
+        sessionId: session.id,
+        startCreate: !!createMode,
+        onDone(id) {
+          XplainChat.selectClass(session.id, id);
+          setTimeout(renderAll, 250);
+        },
+      });
+    };
+    el.querySelectorAll(".open-class-picker").forEach((btn) => {
+      btn.addEventListener("click", () => openClassGallery(false));
+    });
+    el.querySelectorAll(".open-class-create").forEach((btn) => {
+      btn.addEventListener("click", () => openClassGallery(true));
     });
     el.querySelectorAll(".pick-class").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -348,36 +524,170 @@
     el.scrollTop = el.scrollHeight;
   }
 
-  function genStatusIcon(status) {
-    if (status === "done") return "✓";
-    if (status === "generating") return "⏳";
-    return "○";
+  let imageModalTarget = null;
+  let imageModalTitle = "";
+
+  function targetHasImages(targetId) {
+    return XplainWorkspace.hasImageAttachment(session.id, targetId);
+  }
+
+  function imageActionBtn(targetId, title) {
+    const has = targetHasImages(targetId);
+    return `<button type="button" class="img-attach-btn p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container ${has ? "has-images" : ""}" data-target="${targetId}" data-title="${XplainUI.escapeHtml(title || "")}" title="${has ? "Edit images" : "Add image"}">
+      <span class="material-symbols-outlined text-[20px]">${has ? "image" : "add_photo_alternate"}</span>
+    </button>`;
+  }
+
+  function refreshImageModalPreviews() {
+    if (!imageModalTarget) return;
+    const att = XplainWorkspace.getImageAttachment(session.id, imageModalTarget);
+    const box = document.getElementById("img-modal-previews");
+    box.innerHTML = (att.images || [])
+      .map(
+        (img) => `<div class="relative w-20 h-20 rounded-lg overflow-hidden border border-outline-variant bg-surface-container-high group/img">
+        ${img.preview_url ? `<img src="${img.preview_url}" class="w-full h-full object-cover" alt=""/>` : `<span class="material-symbols-outlined absolute inset-0 m-auto text-on-surface-variant">image</span>`}
+        <button type="button" class="img-modal-rm absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-on-background/70 text-white flex items-center justify-center" data-id="${img.id}" title="Remove">
+          <span class="material-symbols-outlined text-[14px]">close</span>
+        </button>
+      </div>`
+      )
+      .join("");
+    box.querySelectorAll(".img-modal-rm").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        XplainWorkspace.removeImageFromTarget(session.id, imageModalTarget, btn.dataset.id);
+        session = XplainStore.getSession(session.id);
+        refreshImageModalPreviews();
+      });
+    });
+  }
+
+  function openImageModal(targetId, title) {
+    imageModalTarget = targetId;
+    imageModalTitle = title || "Add image";
+    session = XplainStore.getSession(session.id);
+    const att = XplainWorkspace.getImageAttachment(session.id, targetId);
+    document.getElementById("img-modal-title").textContent = imageModalTitle;
+    document.getElementById("img-modal-prompt").value = att.prompt || "";
+    document.getElementById("img-modal-file").value = "";
+    refreshImageModalPreviews();
+    document.getElementById("image-attach-modal").classList.remove("hidden");
+  }
+
+  function closeImageModal() {
+    document.getElementById("image-attach-modal").classList.add("hidden");
+    imageModalTarget = null;
+  }
+
+  function bindImageButtons(pane) {
+    pane.querySelectorAll(".img-attach-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openImageModal(btn.dataset.target, btn.dataset.title || "Add image");
+      });
+    });
   }
 
   function renderGeneratingPlan() {
     const gen = session.plan_gen;
     const steps = gen?.steps || [];
+    const plan = session.plan || {};
+    const pages = plan.pages || [];
+    const doneCount = steps.filter((s) => s.status === "done").length;
+    const total = steps.length || 1;
+    const pct = Math.round((doneCount / total) * 100);
+    const current = steps.find((s) => s.status === "generating");
+    const statusCopy =
+      gen?.status_text ||
+      (current
+        ? `Writing ${current.label}…`
+        : doneCount >= total
+          ? "Finishing draft…"
+          : "Preparing outline…");
+
+    const stepCard = (s, idx) => {
+      const isStyle = s.key === "style";
+      const page = isStyle ? null : pages.find((p) => p.id === s.key);
+      const title = isStyle
+        ? "Global Design Style"
+        : page?.title || s.label || `Page ${idx}`;
+      const subtitle = isStyle
+        ? "Colors · typography · visual rules"
+        : page
+          ? `${page.minutes || "—"} min · ${(page.type || "section").replace(/_/g, " ")}`
+          : "Lesson section";
+      const icon = isStyle ? "palette" : XplainUI.sectionIcon(page?.type);
+      const st = s.status || "pending";
+      const stateCls =
+        st === "done"
+          ? "plan-gen-card is-done"
+          : st === "generating"
+            ? "plan-gen-card is-active"
+            : "plan-gen-card is-pending";
+      const badge =
+        st === "done"
+          ? `<span class="plan-gen-badge plan-gen-badge-done"><span class="material-symbols-outlined text-[16px]">check_circle</span> Ready</span>`
+          : st === "generating"
+            ? `<span class="plan-gen-badge plan-gen-badge-active"><span class="material-symbols-outlined text-[16px] animate-spin">progress_activity</span> Writing</span>`
+            : `<span class="plan-gen-badge plan-gen-badge-wait">Queued</span>`;
+
+      return `
+<article class="${stateCls}" style="animation-delay:${idx * 40}ms">
+  <div class="plan-gen-thumb ${st === "pending" ? "skeleton" : ""}">
+    <span class="material-symbols-outlined plan-gen-thumb-icon">${icon}</span>
+    ${st === "generating" ? `<span class="plan-gen-pulse"></span>` : ""}
+  </div>
+  <div class="plan-gen-body min-w-0">
+    <div class="flex items-start justify-between gap-2">
+      <div class="min-w-0">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant mb-0.5">${isStyle ? "Style" : `Page ${page?.number || idx}`}</p>
+        <h3 class="font-semibold text-on-surface text-sm truncate leading-snug">${XplainUI.escapeHtml(title)}</h3>
+        <p class="text-xs text-on-surface-variant mt-0.5 truncate capitalize">${XplainUI.escapeHtml(subtitle)}</p>
+      </div>
+      ${badge}
+    </div>
+    ${
+      st === "generating"
+        ? `<div class="plan-gen-lines mt-3" aria-hidden="true">
+      <span class="skeleton h-2 rounded w-[92%] block"></span>
+      <span class="skeleton h-2 rounded w-[70%] block mt-1.5"></span>
+      <span class="skeleton h-2 rounded w-[80%] block mt-1.5"></span>
+    </div>`
+        : st === "done"
+          ? `<p class="text-xs text-success mt-2 flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">done_all</span> Added to draft</p>`
+          : `<p class="text-xs text-on-surface-variant/70 mt-2">Waiting…</p>`
+    }
+  </div>
+</article>`;
+    };
+
     return `
-<div class="p-8 max-w-lg mx-auto w-full">
-  <h2 class="text-xl font-semibold text-on-surface mb-2">Creating your lesson plan…</h2>
-  <p class="text-sm text-on-surface-variant mb-6">Pages appear as they’re ready.</p>
-  <ul class="space-y-3">
-    ${steps
-      .map(
-        (s) => `<li class="flex items-center gap-3 text-sm ${
-          s.status === "done"
-            ? "text-success"
-            : s.status === "generating"
-              ? "text-primary font-medium"
-              : "text-on-surface-variant"
-        }">
-      <span class="w-6 text-center">${genStatusIcon(s.status)}</span>
-      <span>${XplainUI.escapeHtml(s.label)}</span>
-      ${s.status === "generating" ? `<span class="material-symbols-outlined text-sm animate-spin">progress_activity</span>` : ""}
-    </li>`
-      )
-      .join("")}
-  </ul>
+<div class="plan-gen-shell">
+  <header class="plan-gen-header">
+    <div class="flex items-start gap-3">
+      <div class="plan-gen-header-icon">
+        <span class="material-symbols-outlined text-[22px]">auto_awesome</span>
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="text-[11px] font-semibold uppercase tracking-wider text-primary mb-1">Building draft</p>
+        <h2 class="text-xl font-semibold text-on-surface leading-tight">${XplainUI.escapeHtml(plan.title || session.title || "Lesson plan")}</h2>
+        <p class="text-sm text-on-surface-variant mt-1">${XplainUI.escapeHtml(statusCopy)}</p>
+      </div>
+      <div class="plan-gen-pct shrink-0" aria-label="${pct}% complete">
+        <svg viewBox="0 0 36 36" class="plan-gen-ring">
+          <path class="plan-gen-ring-bg" pathLength="100" d="M18 2.5a15.5 15.5 0 1 1 0 31 15.5 15.5 0 1 1 0-31"/>
+          <path class="plan-gen-ring-fg" pathLength="100" stroke-dasharray="${pct} 100" d="M18 2.5a15.5 15.5 0 1 1 0 31 15.5 15.5 0 1 1 0-31"/>
+        </svg>
+        <span class="plan-gen-pct-num">${pct}%</span>
+      </div>
+    </div>
+    <div class="plan-gen-track mt-5" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100">
+      <div class="plan-gen-track-fill" style="width:${pct}%"></div>
+    </div>
+    <p class="text-xs text-on-surface-variant mt-2">${doneCount} of ${total} sections ready</p>
+  </header>
+  <div class="plan-gen-grid">
+    ${steps.map((s, i) => stepCard(s, i)).join("")}
+  </div>
 </div>`;
   }
 
@@ -405,9 +715,11 @@
         <span class="material-symbols-outlined text-primary">palette</span>
         Global Design Style
       </h3>
-      <button type="button" class="pencil-btn p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container" data-edit="global-style" title="Edit in chat">
-        <span class="material-symbols-outlined">edit</span>
-      </button>
+      <div class="flex items-center gap-0.5">
+        <button type="button" class="pencil-btn p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container" data-edit="global-style" title="Pin to edit">
+          <span class="material-symbols-outlined">push_pin</span>
+        </button>
+      </div>
     </div>
     ${gs.primary ? `<div class="flex gap-2 mb-4">
       <div class="h-8 flex-1 rounded-lg" style="background:${gs.primary}" title="Primary"></div>
@@ -419,7 +731,6 @@
       <div><dt class="text-xs text-on-surface-variant">Typography</dt><dd class="text-on-surface font-medium">${XplainUI.escapeHtml(gs.typography || "")}</dd></div>
       <div><dt class="text-xs text-on-surface-variant">Visual Style</dt><dd class="text-on-surface font-medium">${XplainUI.escapeHtml(gs.visual_style || "")}</dd></div>
       <div><dt class="text-xs text-on-surface-variant">Background</dt><dd class="text-on-surface font-medium">${XplainUI.escapeHtml(gs.background || gs.background_style || "")}</dd></div>
-      <div><dt class="text-xs text-on-surface-variant">Layout</dt><dd class="text-on-surface font-medium">${XplainUI.escapeHtml(gs.layout || "")}</dd></div>
       <div class="sm:col-span-2"><dt class="text-xs text-on-surface-variant">Rules</dt><dd class="text-on-surface font-medium">${XplainUI.escapeHtml((gs.rules || []).join(" · "))}</dd></div>
     </dl>
   </div>`
@@ -430,17 +741,21 @@
     .filter((p) => p.status === "ready")
     .map((page) => {
       const sel = selectedIds.has(page.id);
+      const hasImg = targetHasImages(page.id);
       return `
-<div class="lesson-section group relative bg-surface border rounded-xl p-5 transition-all ${sel ? "selected border-primary" : "border-outline-variant"}">
+<div class="lesson-section group relative bg-surface border rounded-xl p-5 transition-all ${sel ? "selected border-primary" : "border-outline-variant"} ${hasImg ? "has-images" : ""}">
   <div class="flex justify-between items-start mb-3">
-    <h3 class="font-semibold text-on-surface flex items-center gap-2">
-      <span class="material-symbols-outlined text-primary">${XplainUI.sectionIcon(page.type)}</span>
-      ${XplainUI.escapeHtml(page.title)}
-      <span class="text-xs font-normal text-on-surface-variant">(${page.minutes} min)</span>
+    <h3 class="font-semibold text-on-surface flex items-center gap-2 min-w-0">
+      <span class="material-symbols-outlined text-primary shrink-0">${XplainUI.sectionIcon(page.type)}</span>
+      <span class="truncate">${XplainUI.escapeHtml(page.title)}</span>
+      <span class="text-xs font-normal text-on-surface-variant shrink-0">(${page.minutes} min)</span>
     </h3>
-    <button type="button" class="pencil-btn p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container" data-edit="${page.id}" title="Edit in chat">
-      <span class="material-symbols-outlined">edit</span>
-    </button>
+    <div class="flex items-center gap-0.5 shrink-0">
+      ${imageActionBtn(page.id, page.title)}
+      <button type="button" class="pencil-btn p-1.5 rounded-lg text-on-surface-variant hover:text-primary hover:bg-surface-container" data-edit="${page.id}" title="Pin to edit">
+        <span class="material-symbols-outlined">push_pin</span>
+      </button>
+    </div>
   </div>
   <div class="text-sm text-on-surface">${XplainUI.renderMdLite(page.body_md)}</div>
   ${page.visual_note ? `<p class="mt-3 text-xs text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-sm">image</span>${XplainUI.escapeHtml(page.visual_note)}</p>` : ""}
@@ -475,15 +790,23 @@
       .map((s, i) => {
         const gen = s.status === "generating";
         const ready = s.status === "ready";
+        const targetId = s.section_id || s.id;
+        const hasImg = targetHasImages(targetId) || targetHasImages(s.id) || s.has_teacher_images;
         return `
-<div class="slide-card ${gen ? "generating" : ""} bg-surface border border-outline-variant rounded-xl overflow-hidden ${gen ? "ring-2 ring-primary/30" : ""}">
-  <div class="slide-thumb h-28 ${ready ? "bg-gradient-to-br from-primary/10 to-secondary-container/20" : "skeleton"} flex items-center justify-center relative">
-    ${ready ? `<span class="material-symbols-outlined text-4xl text-primary opacity-70">slideshow</span>` : ""}
+<div class="slide-card group relative ${gen ? "generating" : ""} bg-surface border border-outline-variant rounded-xl overflow-hidden ${gen ? "ring-2 ring-primary/30" : ""} ${hasImg ? "has-images" : ""}">
+  <div class="absolute top-2 right-2 z-10 flex gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+    ${imageActionBtn(targetId, s.title || "Slide " + (i + 1))}
+  </div>
+  <div class="slide-thumb h-28 ${hasImg ? "bg-teal-50" : ready ? "bg-gradient-to-br from-primary/10 to-secondary-container/20" : "skeleton"} flex items-center justify-center relative">
+    ${hasImg ? `<span class="material-symbols-outlined text-4xl text-teal-600 opacity-80">image</span>` : ""}
+    ${!hasImg && ready ? `<span class="material-symbols-outlined text-4xl text-primary opacity-70">slideshow</span>` : ""}
     ${gen ? `<span class="material-symbols-outlined animate-spin text-primary absolute">progress_activity</span>` : ""}
     ${s.status === "pending" ? `<span class="text-xs text-on-surface-variant">Queued</span>` : ""}
   </div>
   <div class="p-3 border-t border-outline-variant/40">
-    <p class="text-xs text-on-surface-variant">Slide ${i + 1}</p>
+    <div class="flex items-center justify-between gap-2">
+      <p class="text-xs text-on-surface-variant">Slide ${i + 1}${hasImg ? " · images" : ""}</p>
+    </div>
     <p class="font-medium text-sm truncate">${XplainUI.escapeHtml(s.title)}</p>
   </div>
 </div>`;
@@ -510,19 +833,6 @@
       </button>
     </div>
   </div>
-  ${session.slides?.length ? `
-  <div class="mb-8">
-    <h3 class="font-semibold mb-3">Slide deck preview</h3>
-    <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-      ${session.slides.map((s, i) => `
-<div class="bg-surface border border-outline-variant rounded-lg overflow-hidden">
-  <div class="h-20 bg-white flex flex-col items-center justify-center p-2 text-center">
-    <p class="text-xs font-bold truncate w-full">${XplainUI.escapeHtml(s.title)}</p>
-  </div>
-  <div class="px-2 py-1 text-[10px] text-on-surface-variant bg-surface-container-low">Slide ${i + 1}</div>
-</div>`).join("")}
-    </div>
-  </div>` : ""}
   <article class="bg-surface border border-outline-variant/50 rounded-xl p-6 md:p-10">
     <div class="flex justify-between border-b border-outline-variant pb-6 mb-8">
       <div>
@@ -539,13 +849,18 @@
     </div>
     ${(content.sections || [])
       .map(
-        (sec) => `
-<div class="mb-10 group relative p-4 -mx-4 rounded-lg hover:bg-surface-container-low ${selectedIds.has(sec.id) ? "ring-2 ring-primary/40" : ""}">
+        (sec) => {
+          const hasImg = targetHasImages(sec.id) || sec.has_teacher_images;
+          return `
+<div class="mb-10 group relative p-4 -mx-4 rounded-lg border ${hasImg ? "has-images lesson-section border-transparent" : "border-transparent"} hover:bg-surface-container-low ${selectedIds.has(sec.id) ? "ring-2 ring-primary/40" : ""}">
   <div class="flex justify-between items-start mb-3">
-    <h3 class="font-semibold text-lg border-l-4 border-primary pl-3">${XplainUI.escapeHtml(sec.title)}</h3>
-    <button type="button" class="pencil-btn opacity-0 group-hover:opacity-100 p-1.5 rounded-md text-primary border border-outline-variant bg-surface" data-edit="${sec.id}">
-      <span class="material-symbols-outlined text-[16px]">edit</span>
-    </button>
+    <h3 class="font-semibold text-lg border-l-4 ${hasImg ? "border-teal-500" : "border-primary"} pl-3">${XplainUI.escapeHtml(sec.title)}</h3>
+    <div class="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+      ${imageActionBtn(sec.id, sec.title)}
+      <button type="button" class="pencil-btn p-1.5 rounded-md text-primary border border-outline-variant bg-surface" data-edit="${sec.id}">
+        <span class="material-symbols-outlined text-[16px]">edit</span>
+      </button>
+    </div>
   </div>
   <div class="text-sm">${XplainUI.renderMdLite(sec.body_md)}</div>
   ${sec.has_diagram ? `<div class="my-6 rounded-xl border border-outline-variant/30 bg-white p-6 flex flex-col items-center">
@@ -554,7 +869,8 @@
     </div>
     <p class="text-xs text-on-surface-variant">Placeholder diagram (mock)</p>
   </div>` : ""}
-</div>`
+</div>`;
+        }
       )
       .join("")}
   </article>
@@ -583,22 +899,36 @@
   function renderRight() {
     session = XplainStore.getSession(session.id);
     const pane = document.getElementById("right-pane");
+
+    // Only recover stuck sessions — never interrupt an active generation run.
+    if (
+      session.phase === "generating_plan" &&
+      XplainChat.isPlanViewable(session) &&
+      !XplainChat.isGenerating(session.id)
+    ) {
+      XplainChat.finalizeStuckPlan(session.id);
+      session = XplainStore.getSession(session.id);
+    }
+
     if (session.phase === "generating_plan") {
       pane.innerHTML = renderGeneratingPlan();
     } else if (session.phase === "building") {
       pane.innerHTML = renderBuilding();
+      bindImageButtons(pane);
     } else if (session.phase === "ready" && (session.readyContent || session.lesson_id)) {
       pane.innerHTML = renderReady();
       bindPencils(pane);
+      bindImageButtons(pane);
       pane.querySelectorAll("[data-export]").forEach((btn) => {
         btn.addEventListener("click", async () => {
           await XplainWorkspace.exportLesson(session.id, btn.dataset.export);
           renderAll();
         });
       });
-    } else if (session.plan && session.phase === "planning") {
+    } else if (session.plan && (session.phase === "planning" || XplainChat.isPlanViewable(session))) {
       pane.innerHTML = renderPlanPanel();
       bindPencils(pane);
+      bindImageButtons(pane);
       document.getElementById("btn-approve")?.addEventListener("click", async () => {
         const b = document.getElementById("btn-approve");
         if (b) b.disabled = true;
@@ -627,6 +957,7 @@
     sending = true;
     const refs = Array.from(selectedIds);
     input.value = "";
+    input.style.height = "";
     hideMentions();
     renderMessages();
     session = XplainStore.getSession(session.id);
@@ -680,6 +1011,43 @@
   }
 
   document.getElementById("chat-send").addEventListener("click", send);
+  document.getElementById("toggle-preview").addEventListener("click", togglePreview);
+  document.getElementById("reopen-preview").addEventListener("click", togglePreview);
+
+  const imgModal = document.getElementById("image-attach-modal");
+  document.getElementById("img-modal-close").addEventListener("click", closeImageModal);
+  document.getElementById("img-modal-cancel").addEventListener("click", closeImageModal);
+  imgModal.addEventListener("click", (e) => {
+    if (e.target === imgModal) closeImageModal();
+  });
+  document.getElementById("img-modal-file").addEventListener("change", async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length || !imageModalTarget) return;
+    for (const file of files) {
+      if (!XplainMedia.isImageFile(file)) continue;
+      await XplainWorkspace.addImageToTarget(session.id, imageModalTarget, file);
+    }
+    session = XplainStore.getSession(session.id);
+    e.target.value = "";
+    refreshImageModalPreviews();
+  });
+  document.getElementById("img-modal-confirm").addEventListener("click", async () => {
+    if (!imageModalTarget) return;
+    const prompt = document.getElementById("img-modal-prompt").value;
+    const btn = document.getElementById("img-modal-confirm");
+    btn.disabled = true;
+    const ok = await XplainWorkspace.confirmImageAttachment(
+      session.id,
+      imageModalTarget,
+      prompt
+    );
+    btn.disabled = false;
+    if (ok) {
+      closeImageModal();
+      renderAll();
+    }
+  });
+
   document.getElementById("chat-input").addEventListener("keydown", (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -687,7 +1055,10 @@
     }
   });
   document.getElementById("chat-input").addEventListener("input", (e) => {
-    const v = e.target.value;
+    const input = e.target;
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 112) + "px";
+    const v = input.value;
     const at = v.lastIndexOf("@");
     if (at >= 0 && !/\s/.test(v.slice(at + 1))) showMentions(v.slice(at + 1));
     else hideMentions();
@@ -699,17 +1070,31 @@
     showMentions("");
   });
 
+  applyPreviewLayout();
+
   window.addEventListener("xplain:store", () => {
-    const s = XplainStore.getSession(session.id);
-    if (s) {
-      session = s;
-      renderMessages();
-      renderRight();
+    try {
+      const s = XplainStore.getSession(session.id);
+      if (s) {
+        session = s;
+        renderMessages();
+        renderRight();
+      }
+    } catch (err) {
+      console.error("workspace store refresh failed", err);
     }
   });
 
-  // Home prompt → first chat turn
+  // Recover only if a previous run died mid-generation (no live lock).
   (async function bootSeed() {
+    session = XplainStore.getSession(session.id) || session;
+    if (
+      session.phase === "generating_plan" &&
+      !XplainChat.isGenerating(session.id)
+    ) {
+      XplainChat.finalizeStuckPlan(session.id);
+      session = XplainStore.getSession(session.id);
+    }
     const seed = sessionStorage.getItem("xplain-seed-prompt");
     if (seed && session.messages.length <= 1) {
       sessionStorage.removeItem("xplain-seed-prompt");

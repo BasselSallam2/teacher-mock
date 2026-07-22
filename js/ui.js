@@ -77,6 +77,7 @@
 
     mediaIcon(mime) {
       if (!mime) return "link";
+      if (mime.startsWith("image/")) return "image";
       if (mime.includes("pdf")) return "picture_as_pdf";
       if (mime.includes("presentation") || mime.includes("powerpoint")) return "slideshow";
       if (mime.includes("word") || mime.includes("document")) return "description";

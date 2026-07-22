@@ -20,8 +20,43 @@
   }
 
   function save(state) {
-    localStorage.setItem(KEY, JSON.stringify(state));
-    window.dispatchEvent(new CustomEvent("xplain:store", { detail: state }));
+    try {
+      localStorage.setItem(KEY, JSON.stringify(state));
+    } catch (err) {
+      console.warn("XplainStore save failed, retrying without media previews", err);
+      try {
+        const slim = JSON.parse(JSON.stringify(state));
+        (slim.media || []).forEach((m) => {
+          if (m.data_url && String(m.data_url).length > 2000) m.data_url = null;
+        });
+        (slim.identities || []).forEach((i) => {
+          if (i.logo_data_url && String(i.logo_data_url).length > 2000) {
+            i.logo_data_url = null;
+          }
+        });
+        (slim.sessions || []).forEach((s) => {
+          const map = s.image_attachments || {};
+          Object.values(map).forEach((att) => {
+            (att.images || []).forEach((img) => {
+              if (img.preview_url && String(img.preview_url).length > 2000) {
+                img.preview_url = null;
+              }
+            });
+          });
+        });
+        localStorage.setItem(KEY, JSON.stringify(slim));
+      } catch (err2) {
+        console.error("XplainStore save failed", err2);
+      }
+    }
+    // Async so UI listener errors cannot abort callers (e.g. plan generation).
+    queueMicrotask(() => {
+      try {
+        window.dispatchEvent(new CustomEvent("xplain:store", { detail: state }));
+      } catch (e) {
+        console.error("xplain:store listener error", e);
+      }
+    });
   }
 
   function ensure() {
@@ -76,12 +111,11 @@
       const item = {
         id: uid("id"),
         name: data.name || "Untitled Identity",
-        primary: data.primary || "#622ce5",
-        secondary: data.secondary || "#feae2c",
+        primary: data.primary || "#7B4DFF",
+        secondary: data.secondary || "#F5A623",
         background_style: data.background_style || "simple_white",
         image_style: data.image_style || "realistic",
-        typography: data.typography || "Modern Sans",
-        layout: data.layout || "Clean & Educational",
+        typography: data.typography || "Nunito",
         instructions: data.instructions || "",
         logo_data_url: data.logo_data_url || null,
         created_at: new Date().toISOString(),
@@ -116,7 +150,7 @@
       const cls = {
         id: uid("c"),
         status: "active",
-        accent: data.accent || "#7b4dff",
+        accent: data.accent || "#7B4DFF",
         created_at: new Date().toISOString(),
         description: data.description || "",
         ...data,
@@ -149,7 +183,42 @@
       return ensure().media.find((m) => m.id === id);
     },
     getFolders() {
+      this.ensureImagesFolder();
       return ensure().folders;
+    },
+    ensureImagesFolder() {
+      const s = ensure();
+      if (!s.folders) s.folders = [];
+      if (!s.folders.some((f) => f.id === "f-images")) {
+        this.patch((st) => {
+          st.folders.unshift({
+            id: "f-images",
+            name: "Images",
+            kind: "images",
+            updated_at: new Date().toISOString(),
+          });
+        });
+      }
+    },
+    isImagesFolder(folderId) {
+      if (folderId === "f-images") return true;
+      const f = this.getFolders().find((x) => x.id === folderId);
+      return f?.kind === "images" || f?.name === "Images";
+    },
+    addFolder(data) {
+      const folder = {
+        id: uid("f"),
+        name: (data.name || "New Folder").trim() || "New Folder",
+        updated_at: new Date().toISOString(),
+      };
+      this.patch((s) => {
+        if (!s.folders) s.folders = [];
+        // Keep Images folder first
+        const images = s.folders.filter((f) => f.id === "f-images");
+        const rest = s.folders.filter((f) => f.id !== "f-images");
+        s.folders = [...images, folder, ...rest];
+      });
+      return folder;
     },
     addMedia(item) {
       const m = {
@@ -197,7 +266,7 @@
     createSession(opts = {}) {
       const session = {
         id: uid("sess"),
-        phase: "planning",
+        phase: "intake",
         title: opts.title || "New Lesson",
         class_id: opts.class_id || null,
         media_ids: opts.media_ids || [],
@@ -230,6 +299,7 @@
         slides: [],
         build_progress: null,
         export_status: null,
+        image_attachments: {},
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };

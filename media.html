@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Media Library - Xplain AI</title>
   <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
   <link rel="stylesheet" href="css/app.css"/>
 </head>
@@ -26,13 +26,13 @@
             <option value="processing">Processing</option>
             <option value="failed">Failed</option>
           </select>
-          <button id="btn-upload" class="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-lg text-sm shadow-sm">
-            <span class="material-symbols-outlined text-sm">upload</span> Upload Resource
+          <button id="btn-new-folder" class="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-lg text-sm shadow-sm">
+            <span class="material-symbols-outlined text-sm">create_new_folder</span> New Folder
           </button>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="stats-row"></div>
+      <div class="grid grid-cols-1 gap-4" id="stats-row"></div>
 
       <section>
         <h3 class="text-lg font-semibold text-on-surface mb-4">Resource Folders</h3>
@@ -54,7 +54,10 @@
   <div id="upload-modal" class="hidden fixed inset-0 z-50 bg-on-background/50 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-surface rounded-2xl shadow-lg w-full max-w-md overflow-hidden border border-outline-variant/30">
       <div class="p-6 border-b border-outline-variant/30 flex justify-between items-center">
-        <h3 class="text-xl font-semibold">Upload Resource</h3>
+        <div>
+          <h3 class="text-xl font-semibold">Upload Resource</h3>
+          <p id="upload-folder-label" class="text-sm text-on-surface-variant mt-0.5"></p>
+        </div>
         <button type="button" data-close-upload class="p-1 rounded-full hover:bg-surface-container"><span class="material-symbols-outlined">close</span></button>
       </div>
       <div class="p-6 space-y-6">
@@ -63,13 +66,13 @@
             <span class="material-symbols-outlined">cloud_upload</span>
           </div>
           <p class="text-on-surface mb-1">Click to browse or drag and drop</p>
-          <p class="text-xs text-on-surface-variant">PDF, PPTX, DOCX up to 50MB (mock — file stays local)</p>
-          <input type="file" id="file-input" class="hidden" accept=".pdf,.pptx,.docx,.txt,.png,.jpg"/>
+          <p id="upload-hint" class="text-xs text-on-surface-variant">PDF, PPTX, DOCX up to 50MB (mock — file stays local)</p>
+          <input type="file" id="file-input" class="hidden" accept=".pdf,.pptx,.docx,.txt,.png,.jpg,.jpeg,.gif,.webp"/>
         </div>
         <div id="upload-progress" class="hidden bg-surface-container-low rounded-lg p-4 border border-outline-variant/30">
           <div class="flex justify-between items-center mb-2">
             <div class="flex items-center gap-2 min-w-0">
-              <span class="material-symbols-outlined text-primary text-sm">picture_as_pdf</span>
+              <span id="upload-icon" class="material-symbols-outlined text-primary text-sm">picture_as_pdf</span>
               <span id="upload-name" class="text-sm font-medium truncate"></span>
             </div>
             <span id="upload-pct" class="text-xs text-on-surface-variant">0%</span>
@@ -79,7 +82,7 @@
           </div>
           <p id="upload-label" class="text-xs text-on-surface-variant mt-2 text-right">Uploading…</p>
         </div>
-        <div>
+        <div id="fake-upload-wrap">
           <label class="text-sm text-on-surface-variant">Or simulate by name</label>
           <div class="flex gap-2 mt-1">
             <input id="fake-name" class="flex-1 rounded-lg border-outline-variant bg-surface-container-low text-sm" placeholder="e.g. Unit3.pdf or scanned_fail.pdf"/>
@@ -90,6 +93,17 @@
       <div class="p-4 border-t border-outline-variant/30 bg-surface-container-lowest flex justify-end gap-3">
         <button type="button" data-close-upload class="px-4 py-2 text-on-surface-variant hover:bg-surface-container rounded-lg">Cancel</button>
         <button type="button" data-close-upload class="px-4 py-2 bg-primary text-on-primary rounded-lg">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="folder-modal" class="hidden fixed inset-0 z-50 bg-on-background/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-surface rounded-xl p-6 w-full max-w-sm border border-outline-variant">
+      <h3 class="font-semibold mb-3">New Folder</h3>
+      <input id="folder-name-input" class="w-full rounded-lg border-outline-variant bg-surface-container-low mb-4" placeholder="e.g. Grade 7 - Biology"/>
+      <div class="flex justify-end gap-2">
+        <button type="button" id="folder-cancel" class="px-3 py-2 text-sm rounded-lg hover:bg-surface-container">Cancel</button>
+        <button type="button" id="folder-save" class="px-3 py-2 text-sm bg-primary text-on-primary rounded-lg">Create</button>
       </div>
     </div>
   </div>
@@ -114,14 +128,58 @@
 <script>
   XplainLayout.init({ active: "media" });
   let activeFolder = null;
+  let uploadFolderId = null;
 
-  function startUpload(fileOrName) {
+  function openUploadModal(folderId) {
+    uploadFolderId = folderId;
+    activeFolder = folderId;
+    const folder = XplainStore.getFolders().find((f) => f.id === folderId);
+    const imagesOnly = XplainStore.isImagesFolder(folderId);
+    document.getElementById("upload-folder-label").textContent = folder
+      ? `Uploading to “${folder.name}”`
+      : "";
+    document.querySelector("#upload-modal h3").textContent = imagesOnly
+      ? "Upload Images"
+      : "Upload Resource";
+    document.getElementById("upload-hint").textContent = imagesOnly
+      ? "PNG, JPG, GIF, or WebP only (mock — file stays local)"
+      : "PDF, PPTX, DOCX up to 50MB — images go in the Images folder";
+    document.getElementById("file-input").accept = imagesOnly
+      ? "image/png,image/jpeg,image/gif,image/webp,.png,.jpg,.jpeg,.gif,.webp"
+      : ".pdf,.pptx,.docx,.txt";
+    document.getElementById("fake-upload-wrap").classList.toggle("hidden", imagesOnly);
+    document.getElementById("fake-name").placeholder = imagesOnly
+      ? "e.g. bookstore.jpg"
+      : "e.g. Unit3.pdf or scanned_fail.pdf";
+    document.getElementById("upload-progress").classList.add("hidden");
+    document.getElementById("fake-name").value = "";
+    XplainUI.openModal("upload-modal");
+    render();
+  }
+
+  async function startUpload(fileOrName) {
+    const folderId = uploadFolderId || activeFolder;
+    if (!folderId) {
+      XplainUI.toast("Pick a folder", "Upload from a folder card", { icon: "folder" });
+      return;
+    }
+    const imagesOnly = XplainStore.isImagesFolder(folderId);
+    const name = typeof fileOrName === "string" ? fileOrName : fileOrName.name;
+    if (imagesOnly && !XplainMedia.isImageFile(fileOrName)) {
+      XplainUI.toast("Images only", "Choose a PNG, JPG, GIF, or WebP file.", { icon: "image" });
+      return;
+    }
+    if (!imagesOnly && XplainMedia.isImageFile(fileOrName)) {
+      XplainUI.toast("Use Images folder", "Photos upload only to Images.", { icon: "folder" });
+      return;
+    }
     const box = document.getElementById("upload-progress");
     box.classList.remove("hidden");
-    const name = typeof fileOrName === "string" ? fileOrName : fileOrName.name;
     document.getElementById("upload-name").textContent = name;
-    XplainMedia.simulateUpload(fileOrName, {
-      folder_id: activeFolder || "f-general",
+    document.getElementById("upload-icon").textContent = imagesOnly ? "image" : "picture_as_pdf";
+    await XplainMedia.simulateUpload(fileOrName, {
+      folder_id: folderId,
+      images_only: imagesOnly,
       onProgress(pct, id, label) {
         document.getElementById("upload-pct").textContent = pct + "%";
         document.getElementById("upload-bar").style.width = pct + "%";
@@ -129,8 +187,9 @@
         render();
       },
       onDone(id, status) {
+        if (status === "rejected") return;
         XplainUI.toast(
-          status === "indexed" ? "Indexed" : "Indexing failed",
+          status === "indexed" ? (imagesOnly ? "Image saved" : "Indexed") : "Indexing failed",
           name,
           { icon: status === "indexed" ? "check_circle" : "error" }
         );
@@ -143,22 +202,11 @@
     const media = XplainStore.getMedia();
     const folders = XplainStore.getFolders();
     const filter = document.getElementById("media-filter").value;
-    const indexed = media.filter((m) => m.status === "indexed").length;
     const totalBytes = media.reduce((s, m) => s + (m.size_bytes || 0), 0);
     const quota = 10 * 1024 * 1024 * 1024;
     const pct = Math.min(100, Math.round((totalBytes / quota) * 1000) / 10) || 4;
 
     document.getElementById("stats-row").innerHTML = `
-      <div class="bg-surface p-6 rounded-xl border border-outline-variant/30">
-        <span class="material-symbols-outlined text-primary mb-4 text-3xl">database</span>
-        <p class="text-xs uppercase text-on-surface-variant mb-1">Total Indexed</p>
-        <p class="text-2xl font-semibold">${indexed} Docs</p>
-      </div>
-      <div class="bg-surface p-6 rounded-xl border border-outline-variant/30">
-        <span class="material-symbols-outlined text-success mb-4 text-3xl">bolt</span>
-        <p class="text-xs uppercase text-on-surface-variant mb-1">Processing Time</p>
-        <p class="text-2xl font-semibold">~2.4s avg</p>
-      </div>
       <div class="bg-surface p-6 rounded-xl border border-outline-variant/30">
         <span class="material-symbols-outlined text-on-surface-variant mb-4 text-3xl">storage</span>
         <p class="text-xs uppercase text-on-surface-variant mb-1">Storage Used</p>
@@ -169,14 +217,22 @@
     document.getElementById("folder-grid").innerHTML = folders.map((f) => {
       const count = media.filter((m) => m.folder_id === f.id).length;
       const active = activeFolder === f.id;
-      return `<button type="button" class="folder-btn group flex items-start gap-4 p-5 bg-surface rounded-xl border ${active ? "border-primary bg-surface-container-low" : "border-outline-variant"} hover:border-primary text-left" data-id="${f.id}">
-        <span class="material-symbols-outlined text-primary text-4xl ${active ? "fill-icon" : ""}">folder</span>
-        <div>
-          <h3 class="font-semibold text-on-surface mb-1">${XplainUI.escapeHtml(f.name)}</h3>
-          <p class="text-xs text-on-surface-variant">${count} items • Updated ${XplainUI.relativeTime(f.updated_at)}</p>
+      const imagesOnly = XplainStore.isImagesFolder(f.id);
+      return `<div class="flex flex-col bg-surface rounded-xl border ${active ? "border-primary bg-surface-container-low" : "border-outline-variant"} overflow-hidden">
+        <button type="button" class="folder-btn group flex items-start gap-4 p-5 text-left hover:bg-surface-container-low/60 flex-1" data-id="${f.id}">
+          <span class="material-symbols-outlined text-primary text-4xl ${active ? "fill-icon" : ""}">${imagesOnly ? "photo_library" : "folder"}</span>
+          <div class="min-w-0">
+            <h3 class="font-semibold text-on-surface mb-1 truncate">${XplainUI.escapeHtml(f.name)}</h3>
+            <p class="text-xs text-on-surface-variant">${count} items • ${imagesOnly ? "Images only" : "Updated " + XplainUI.relativeTime(f.updated_at)}</p>
+          </div>
+        </button>
+        <div class="px-5 pb-4">
+          <button type="button" class="upload-folder-btn w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm border border-outline-variant hover:border-primary hover:bg-primary-container/20 text-on-surface" data-id="${f.id}">
+            <span class="material-symbols-outlined text-sm">${imagesOnly ? "add_photo_alternate" : "upload"}</span> ${imagesOnly ? "Upload Images" : "Upload Resource"}
+          </button>
         </div>
-      </button>`;
-    }).join("");
+      </div>`;
+    }).join("") || `<p class="text-on-surface-variant col-span-full text-sm">No folders yet. Create one to start uploading.</p>`;
 
     document.querySelectorAll(".folder-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -184,16 +240,27 @@
         render();
       });
     });
+    document.querySelectorAll(".upload-folder-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openUploadModal(btn.dataset.id);
+      });
+    });
 
     let list = media;
     if (activeFolder) list = list.filter((m) => m.folder_id === activeFolder);
     if (filter !== "all") list = list.filter((m) => m.status === filter);
 
-    document.getElementById("media-list").innerHTML = list.map((m) => `
+    document.getElementById("media-list").innerHTML = list.map((m) => {
+      const isImg = (m.mime_type || "").startsWith("image/");
+      const thumb = isImg && m.data_url
+        ? `<img src="${m.data_url}" class="w-full h-full object-cover" alt=""/>`
+        : `<span class="material-symbols-outlined text-lg">${XplainUI.mediaIcon(m.mime_type)}</span>`;
+      return `
 <div class="grid grid-cols-12 gap-4 p-4 items-center hover:bg-surface-container transition-colors group ${m.status === "failed" ? "opacity-70" : ""}">
   <div class="col-span-6 md:col-span-5 flex items-center gap-3 min-w-0">
-    <div class="w-10 h-10 rounded ${m.mime_type?.includes("pdf") ? "bg-error-container text-on-error-container" : "bg-primary-container/50 text-primary"} flex items-center justify-center shrink-0">
-      <span class="material-symbols-outlined text-lg">${XplainUI.mediaIcon(m.mime_type)}</span>
+    <div class="w-10 h-10 rounded overflow-hidden ${isImg ? "bg-surface-container-high" : m.mime_type?.includes("pdf") ? "bg-error-container text-on-error-container" : "bg-primary-container/50 text-primary"} flex items-center justify-center shrink-0">
+      ${thumb}
     </div>
     <div class="min-w-0">
       <p class="font-medium text-on-surface truncate">${XplainUI.escapeHtml(m.display_name)}</p>
@@ -210,7 +277,8 @@
       <button class="delete-btn p-1.5 text-on-surface-variant hover:text-error" data-id="${m.id}" title="Delete"><span class="material-symbols-outlined text-sm">delete</span></button>
     </div>
   </div>
-</div>`).join("") || `<p class="p-8 text-center text-on-surface-variant text-sm">No resources in this view.</p>`;
+</div>`;
+    }).join("") || `<p class="p-8 text-center text-on-surface-variant text-sm">No resources in this view.</p>`;
 
     document.querySelectorAll(".rename-btn").forEach((b) =>
       b.addEventListener("click", () => {
@@ -237,10 +305,25 @@
     );
   }
 
-  document.getElementById("btn-upload").addEventListener("click", () => {
-    document.getElementById("upload-progress").classList.add("hidden");
-    XplainUI.openModal("upload-modal");
+  document.getElementById("btn-new-folder").addEventListener("click", () => {
+    document.getElementById("folder-name-input").value = "";
+    XplainUI.openModal("folder-modal");
+    setTimeout(() => document.getElementById("folder-name-input").focus(), 50);
   });
+  document.getElementById("folder-cancel").addEventListener("click", () => XplainUI.closeModal("folder-modal"));
+  document.getElementById("folder-save").addEventListener("click", () => {
+    const name = document.getElementById("folder-name-input").value.trim();
+    if (!name) return;
+    const folder = XplainStore.addFolder({ name });
+    activeFolder = folder.id;
+    XplainUI.closeModal("folder-modal");
+    XplainUI.toast("Folder created", name, { icon: "create_new_folder" });
+    render();
+  });
+  document.getElementById("folder-name-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") document.getElementById("folder-save").click();
+  });
+
   document.querySelectorAll("[data-close-upload]").forEach((b) =>
     b.addEventListener("click", () => XplainUI.closeModal("upload-modal"))
   );

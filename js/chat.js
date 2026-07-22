@@ -94,9 +94,10 @@
   function bgLabel(v) {
     return (
       {
-        simple_white: "Simple white background",
-        soft_color: "Soft color background",
-        patterned: "Light pattern background",
+        simple_white: "Simple white",
+        solid_color: "Solid color",
+        soft_color: "Solid color",
+        patterned: "Solid color",
       }[v] || v
     );
   }
@@ -365,7 +366,6 @@
         image_style: idn.image_style,
         background_style: idn.background_style,
         background: bgLabel(idn.background_style),
-        layout: idn.layout,
         rules: idn.instructions
           ? idn.instructions.split(/[.\n]/).map((s) => s.trim()).filter(Boolean).slice(0, 4)
           : [],
@@ -503,13 +503,19 @@
 
   function askForIdentity(sessionId) {
     const list = XplainStore.getIdentities();
+    const def = XplainStore.getTeacher().default_identity_id;
+    const sorted = [...list].sort((a, b) => {
+      if (a.id === def) return -1;
+      if (b.id === def) return 1;
+      return 0;
+    });
     XplainStore.updateSession(sessionId, { agent_step: "identity" });
     XplainStore.appendMessage(sessionId, {
       role: "assistant",
       text: "Which Identity (brand) should we use for colors, logo, background, and image style?",
       meta: {
         pick_identity: true,
-        options: list.map((i) => ({
+        options: sorted.map((i) => ({
           id: i.id,
           label: i.name,
           sub: `${imageLabel(i.image_style)} · ${bgLabel(i.background_style)}`,
@@ -526,7 +532,7 @@
     XplainStore.updateSession(sessionId, { agent_step: "details" });
 
     if (!sess.class_id && !req.grade_hint) {
-      const classes = XplainStore.getClasses();
+      const classes = XplainStore.getClasses().filter((c) => c.status !== "archived");
       XplainStore.appendMessage(sessionId, {
         role: "assistant",
         text: "Which class is this for?",
@@ -535,7 +541,8 @@
           options: classes.map((c) => ({
             id: c.id,
             label: c.name,
-            sub: c.curriculum,
+            sub: `${c.grade || ""} · ${c.curriculum || ""}`.replace(/^ · | · $/g, ""),
+            accent: c.accent || "#7B4DFF",
           })),
         },
       });
@@ -586,6 +593,32 @@
       return;
     }
     offerConfirm(sessionId);
+  }
+
+  const planLocks = new Set();
+
+  function finalizePlanState(sessionId, fallbackPlan) {
+    const final = XplainStore.getSession(sessionId);
+    const finalPlan = clone(final?.plan || fallbackPlan);
+    if (!finalPlan) return null;
+    finalPlan.global_style_status = "ready";
+    (finalPlan.pages || []).forEach((page) => {
+      page.status = "ready";
+    });
+    finalPlan.sections = finalPlan.pages;
+    const finalGen = clone(final?.plan_gen || { steps: [] });
+    (finalGen.steps || []).forEach((s) => {
+      s.status = "done";
+    });
+    XplainStore.updateSession(sessionId, {
+      plan: finalPlan,
+      plan_gen: finalGen,
+      phase: "planning",
+      agent_step: "plan_ready",
+      title: finalPlan.title,
+      generating_token: null,
+    });
+    return finalPlan;
   }
 
   const Chat = {
@@ -731,71 +764,209 @@
         agent_step: "details",
       });
       XplainStore.appendMessage(sessionId, {
+        role: "user",
+        text: "Continue discussion",
+      });
+      XplainStore.appendMessage(sessionId, {
         role: "assistant",
-        text: "Sure — tell me anything else to include. When you’re ready, say “create the plan” or I’ll ask again once we have enough.",
+        text: "Sure — tell me anything else to include. When you’re ready, tap Make The Plan or say “create the plan”.",
       });
     },
 
     async createLessonPlan(sessionId) {
-      const sess = XplainStore.getSession(sessionId);
-      if (!sess) return;
-      XplainStore.updateSession(sessionId, {
-        awaiting_plan_confirm: false,
-        phase: "generating_plan",
-      });
-      XplainStore.appendMessage(sessionId, {
-        role: "assistant",
-        text: "Creating your lesson plan…",
-        meta: { generating: true },
-      });
+      if (planLocks.has(sessionId)) return;
+      planLocks.add(sessionId);
+      const token = "gen-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7);
+      try {
+        const sess = XplainStore.getSession(sessionId);
+        if (!sess) return;
 
-      const plan = buildPlanSkeleton(sess, sess.requirements || {});
-      const steps = [
-        { key: "style", label: "Design Style" },
-        ...plan.pages.map((p) => ({ key: p.id, label: "Page " + p.number })),
-      ];
-      XplainStore.updateSession(sessionId, {
-        plan: clone(plan),
-        plan_gen: {
-          steps: steps.map((s) => ({ ...s, status: "pending" })),
-          current: 0,
-        },
-        title: plan.title,
-      });
-
-      for (let i = 0; i < steps.length; i++) {
-        await new Promise((r) => setTimeout(r, 600));
-        const s2 = XplainStore.getSession(sessionId);
-        const p = clone(s2.plan);
-        const gen = clone(s2.plan_gen);
-        gen.steps[i].status = "generating";
-        gen.current = i;
-        XplainStore.updateSession(sessionId, { plan: p, plan_gen: gen });
-
-        await new Promise((r) => setTimeout(r, 400));
-        const s3 = XplainStore.getSession(sessionId);
-        const p2 = clone(s3.plan);
-        const gen2 = clone(s3.plan_gen);
-        gen2.steps[i].status = "done";
-        if (steps[i].key === "style") p2.global_style_status = "ready";
-        else {
-          const page = p2.pages.find((x) => x.id === steps[i].key);
-          if (page) page.status = "ready";
-        }
-        p2.sections = p2.pages;
+        XplainStore.appendMessage(sessionId, {
+          role: "user",
+          text: "Make The Plan",
+        });
         XplainStore.updateSession(sessionId, {
-          plan: p2,
-          plan_gen: gen2,
-          phase: i === steps.length - 1 ? "planning" : "generating_plan",
-          agent_step: "plan_ready",
+          awaiting_plan_confirm: false,
+          phase: "generating_plan",
+          generating_token: token,
+        });
+        XplainStore.appendMessage(sessionId, {
+          role: "assistant",
+          text: "Building your lesson draft now — style first, then each page.",
+          meta: { generating: true },
+        });
+
+        const plan = buildPlanSkeleton(sess, sess.requirements || {});
+        const steps = [
+          { key: "style", label: "Global Design Style" },
+          ...plan.pages.map((p) => ({
+            key: p.id,
+            label: p.title || "Page " + p.number,
+          })),
+        ];
+        XplainStore.updateSession(sessionId, {
+          plan: clone(plan),
+          plan_gen: {
+            steps: steps.map((s) => ({ ...s, status: "pending" })),
+            current: 0,
+            status_text: "Preparing your outline…",
+          },
+          title: plan.title,
+          generating_token: token,
+        });
+
+        const isCurrent = () =>
+          XplainStore.getSession(sessionId)?.generating_token === token;
+
+        const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+        const jitter = (min, max) =>
+          min + Math.floor(Math.random() * (max - min + 1));
+
+        // Calm opening beat so the workspace can settle before writing starts.
+        await wait(1100);
+        if (!isCurrent()) return;
+
+        for (let i = 0; i < steps.length; i++) {
+          if (!isCurrent()) return;
+
+          const label = steps[i].label;
+          const isStyle = steps[i].key === "style";
+          const thinkMs = isStyle ? jitter(900, 1200) : jitter(700, 1000);
+          const writeMs = isStyle ? jitter(1400, 1800) : jitter(1600, 2200);
+
+          const s2 = XplainStore.getSession(sessionId);
+          const p = clone(s2.plan);
+          const gen = clone(s2.plan_gen);
+          if (!gen?.steps?.[i]) break;
+          gen.steps[i].status = "generating";
+          gen.current = i;
+          gen.status_text = isStyle
+            ? "Setting Global Design Style…"
+            : `Drafting ${label}…`;
+          XplainStore.updateSession(sessionId, {
+            plan: p,
+            plan_gen: gen,
+            generating_token: token,
+          });
+
+          await wait(thinkMs);
+          if (!isCurrent()) return;
+
+          // Mid-step copy update so the wait feels intentional, not stuck.
+          const sMid = XplainStore.getSession(sessionId);
+          const genMid = clone(sMid.plan_gen);
+          if (genMid) {
+            genMid.status_text = isStyle
+              ? "Applying colors, type, and visual rules…"
+              : `Shaping activities and teaching notes…`;
+            XplainStore.updateSession(sessionId, {
+              plan_gen: genMid,
+              generating_token: token,
+            });
+          }
+
+          await wait(writeMs);
+          if (!isCurrent()) return;
+
+          const s3 = XplainStore.getSession(sessionId);
+          const p2 = clone(s3.plan);
+          const gen2 = clone(s3.plan_gen);
+          if (!gen2?.steps?.[i]) break;
+          gen2.steps[i].status = "done";
+          gen2.status_text =
+            i < steps.length - 1
+              ? `Ready — moving to the next section…`
+              : "Almost done — polishing the draft…";
+          if (steps[i].key === "style") p2.global_style_status = "ready";
+          else {
+            const page = p2.pages.find((x) => x.id === steps[i].key);
+            if (page) page.status = "ready";
+          }
+          p2.sections = p2.pages;
+          XplainStore.updateSession(sessionId, {
+            plan: p2,
+            plan_gen: gen2,
+            phase: "generating_plan",
+            generating_token: token,
+          });
+
+          // Short breath between sections so Ready → next Writing is readable.
+          if (i < steps.length - 1) {
+            await wait(jitter(450, 700));
+            if (!isCurrent()) return;
+          }
+        }
+
+        if (!isCurrent()) return;
+        await wait(900);
+        if (!isCurrent()) return;
+
+        const finalPlan = finalizePlanState(sessionId, plan);
+        if (!finalPlan) return;
+
+        const already = (XplainStore.getSession(sessionId)?.messages || []).some(
+          (m) => m.meta?.draft
+        );
+        if (!already) {
+          XplainStore.appendMessage(sessionId, {
+            role: "assistant",
+            text: `Draft ready — '${finalPlan.title}'.\n\nReview Global Design Style and each page. Use the pin to edit any page (@Page N) or the identity style (@Global Design Style). When you’re happy, click Approve & Execute.`,
+            meta: { plan_version: 1, draft: true },
+          });
+        }
+      } catch (err) {
+        console.error("createLessonPlan failed", err);
+        finalizePlanState(sessionId);
+      } finally {
+        planLocks.delete(sessionId);
+      }
+    },
+
+    isGenerating(sessionId) {
+      return planLocks.has(sessionId);
+    },
+
+    /** Recover a session stuck on the generating spinner. */
+    finalizeStuckPlan(sessionId) {
+      if (planLocks.has(sessionId)) return false;
+      const sess = XplainStore.getSession(sessionId);
+      if (!sess?.plan) return false;
+      if (sess.phase !== "generating_plan" && sess.phase !== "planning") {
+        return false;
+      }
+      // Already showing a finished plan
+      if (
+        sess.phase === "planning" &&
+        (sess.plan.pages || []).every((p) => p.status === "ready") &&
+        sess.plan.global_style_status === "ready"
+      ) {
+        return false;
+      }
+      const finalPlan = finalizePlanState(sessionId, sess.plan);
+      if (!finalPlan) return false;
+      const already = (sess.messages || []).some((m) => m.meta?.draft);
+      if (!already) {
+        XplainStore.appendMessage(sessionId, {
+          role: "assistant",
+          text: `Draft ready — '${finalPlan.title}'.\n\nReview the plan on the right, then Approve & Execute when you’re happy.`,
+          meta: { plan_version: finalPlan.version || 1, draft: true },
         });
       }
+      return true;
+    },
 
-      XplainStore.appendMessage(sessionId, {
-        role: "assistant",
-        text: `Draft ready — '${plan.title}'.\n\nReview Global Design Style and each page. Use the pencil to edit any page (@Page N) or the identity style (@Global Design Style). When you’re happy, click Approve & Execute.`,
-        meta: { plan_version: 1, draft: true },
-      });
+    isPlanViewable(sess) {
+      if (!sess?.plan) return false;
+      if (sess.phase === "planning" || sess.phase === "ready") return true;
+      if (sess.phase !== "generating_plan") return false;
+      const pages = sess.plan.pages || [];
+      const steps = sess.plan_gen?.steps || [];
+      const pagesReady =
+        pages.length > 0 && pages.every((p) => p.status === "ready");
+      const stepsDone =
+        steps.length > 0 && steps.every((s) => s.status === "done");
+      const hasDraftMsg = (sess.messages || []).some((m) => m.meta?.draft);
+      return pagesReady || stepsDone || hasDraftMsg;
     },
 
     async sendTeacherMessage(sessionId, text, sectionRefs = []) {
