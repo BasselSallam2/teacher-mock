@@ -1,6 +1,6 @@
 # Xplain AI Teacher Tools — UI Mock (Milestone 0)
 
-Clickable prototype aligned with the UX discovery in `chat.txt`. **No backend, no LLM, no real uploads** — browser `localStorage` + timers only.
+Clickable prototype aligned with the UX discovery in `chat.txt`. **No backend, no LLM, no real uploads** — browser `localStorage` + timers only
 
 ## Run
 
