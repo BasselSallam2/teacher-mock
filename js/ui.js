@@ -123,6 +123,97 @@
       const el = document.getElementById(id);
       if (el) el.classList.add("hidden");
     },
+
+    /**
+     * Custom Confirm / Cancel popup (replaces window.confirm).
+     * @returns {Promise<boolean>}
+     */
+    confirmDialog(opts = {}) {
+      const title = opts.title || "Are you sure?";
+      const message = opts.message || "";
+      const confirmLabel = opts.confirmLabel || "Confirm";
+      const cancelLabel = opts.cancelLabel || "Cancel";
+      const danger = opts.danger !== false;
+
+      return new Promise((resolve) => {
+        const existing = document.getElementById("xplain-confirm-root");
+        if (existing) existing.remove();
+
+        const root = document.createElement("div");
+        root.id = "xplain-confirm-root";
+        root.className =
+          "fixed inset-0 z-[200] flex items-center justify-center p-4";
+        root.innerHTML = `
+          <div class="absolute inset-0 bg-black/40" data-confirm-backdrop></div>
+          <div role="dialog" aria-modal="true" aria-labelledby="xplain-confirm-title"
+            class="relative bg-surface border border-outline-variant rounded-2xl p-6 w-full max-w-sm shadow-xl space-y-4">
+            <h3 id="xplain-confirm-title" class="text-lg font-semibold text-on-surface">${this.escapeHtml(title)}</h3>
+            ${
+              message
+                ? `<p class="text-sm text-on-surface-variant">${this.escapeHtml(message)}</p>`
+                : ""
+            }
+            <div class="flex gap-3 pt-1">
+              <button type="button" data-confirm-ok
+                class="flex-1 py-2.5 rounded-lg text-sm font-medium ${
+                  danger
+                    ? "bg-error text-on-error hover:opacity-90"
+                    : "bg-primary-container text-on-primary-container hover:opacity-90"
+                }">${this.escapeHtml(confirmLabel)}</button>
+              <button type="button" data-confirm-cancel
+                class="flex-1 py-2.5 border border-outline-variant rounded-lg text-sm text-on-surface-variant hover:bg-surface-container-low">${this.escapeHtml(cancelLabel)}</button>
+            </div>
+          </div>`;
+        document.body.appendChild(root);
+
+        const finish = (value) => {
+          root.remove();
+          document.removeEventListener("keydown", onKey);
+          resolve(value);
+        };
+        const onKey = (e) => {
+          if (e.key === "Escape") finish(false);
+        };
+        document.addEventListener("keydown", onKey);
+        root.querySelector("[data-confirm-backdrop]").onclick = () => finish(false);
+        root.querySelector("[data-confirm-cancel]").onclick = () => finish(false);
+        root.querySelector("[data-confirm-ok]").onclick = () => finish(true);
+        root.querySelector("[data-confirm-ok]").focus();
+      });
+    },
+
+    /** Wrap a password input with a visibility eye toggle. */
+    attachPasswordToggle(input) {
+      const el =
+        typeof input === "string" ? document.getElementById(input) : input;
+      if (!el || el.dataset.pwToggle === "1") return;
+      el.dataset.pwToggle = "1";
+
+      const wrap = document.createElement("div");
+      wrap.className = "relative mt-1";
+      el.parentNode.insertBefore(wrap, el);
+      wrap.appendChild(el);
+      el.classList.remove("mt-1");
+      if (!/\bpr-\d/.test(el.className)) {
+        el.classList.add("pr-11");
+      }
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface";
+      btn.setAttribute("aria-label", "Show password");
+      btn.innerHTML = `<span class="material-symbols-outlined text-[20px] leading-none">visibility</span>`;
+      wrap.appendChild(btn);
+
+      btn.addEventListener("click", () => {
+        const showing = el.type === "text";
+        el.type = showing ? "password" : "text";
+        const icon = showing ? "visibility" : "visibility_off";
+        btn.setAttribute("aria-label", showing ? "Show password" : "Hide password");
+        btn.querySelector("span").textContent = icon;
+      });
+    },
   };
 
   window.XplainUI = UI;

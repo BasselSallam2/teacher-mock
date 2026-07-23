@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login — getXplain</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/app.css"/>
+</head>
+<body class="bg-background text-on-background antialiased min-h-screen">
+<div id="app-shell" class="min-h-screen flex flex-col">
+  <header class="px-6 py-5 flex items-center gap-3">
+    <img src="assets/logo.png" alt="getXplain" class="w-9 h-9 rounded-lg object-contain bg-white border border-outline-variant/40 p-0.5"/>
+    <span class="font-headline-md font-bold text-on-surface text-lg">get<span class="text-primary">X</span>plain</span>
+  </header>
+  <main class="flex-1 flex items-center justify-center px-4 pb-16">
+    <div class="w-full max-w-md">
+      <div class="bg-surface border border-outline-variant rounded-2xl p-8 shadow-sm">
+        <h1 class="text-2xl font-semibold text-on-surface mb-1">Welcome back</h1>
+        <p class="text-sm text-on-surface-variant mb-6">Sign in to your teacher workspace.</p>
+        <form id="login-form" class="space-y-4">
+          <div>
+            <label class="text-sm text-on-surface-variant" for="email">Email</label>
+            <input id="email" type="email" required autocomplete="username"
+              class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low focus:border-primary focus:ring-primary"
+              placeholder="you@school.edu"/>
+          </div>
+          <div>
+            <label class="text-sm text-on-surface-variant" for="password">Password</label>
+            <input id="password" type="password" required autocomplete="current-password"
+              class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low focus:border-primary focus:ring-primary"
+              placeholder="••••••••"/>
+          </div>
+          <p id="error" class="hidden text-sm text-error"></p>
+          <button type="submit" class="w-full py-3 bg-primary-container text-on-primary-container rounded-xl font-medium hover:opacity-90">
+            Sign in
+          </button>
+        </form>
+
+        <div class="mt-6 pt-5 border-t border-outline-variant/50">
+          <p class="text-xs uppercase tracking-wider text-on-surface-variant mb-3 text-center">Quick mock login</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <button type="button" id="btn-demo-teacher" class="px-3 py-2.5 rounded-xl border border-outline-variant bg-surface-container-low hover:bg-surface-container text-sm text-on-surface flex items-center justify-center gap-2">
+              <span class="material-symbols-outlined text-base text-primary">school</span>
+              Teacher
+            </button>
+            <button type="button" id="btn-demo-org-admin" class="px-3 py-2.5 rounded-xl border border-outline-variant bg-surface-container-low hover:bg-surface-container text-sm text-on-surface flex items-center justify-center gap-2">
+              <span class="material-symbols-outlined text-base text-primary">admin_panel_settings</span>
+              Org admin
+            </button>
+          </div>
+        </div>
+
+        <p class="text-sm text-on-surface-variant mt-6 text-center">
+          No account?
+          <a href="signup.html" class="text-primary font-medium hover:underline">Sign up</a>
+        </p>
+      </div>
+      <p class="text-xs text-on-surface-variant mt-4 text-center">
+        <a href="admin/login.html" class="text-primary hover:underline">Platform admin</a>
+      </p>
+    </div>
+  </main>
+</div>
+<script src="js/seed.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/layout.js"></script>
+<script>
+  XplainLayout.applyTailwind();
+  XplainUI.attachPasswordToggle("password");
+  const sess = XplainStore.getAuthSession();
+  if (sess?.kind === "teacher") location.replace("index.html");
+
+  function showError(msg) {
+    const err = document.getElementById("error");
+    err.textContent = msg;
+    err.classList.remove("hidden");
+  }
+
+  function loginAs(email, password) {
+    document.getElementById("email").value = email;
+    document.getElementById("password").value = password;
+    document.getElementById("error").classList.add("hidden");
+    const result = XplainStore.login(email, password);
+    if (!result.ok) {
+      showError(result.error);
+      return;
+    }
+    location.href = "index.html";
+  }
+
+  document.getElementById("login-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    loginAs(
+      document.getElementById("email").value,
+      document.getElementById("password").value
+    );
+  });
+
+  document.getElementById("btn-demo-teacher").addEventListener("click", () => {
+    loginAs("salma@greenvalley.edu", "teacher123");
+  });
+  document.getElementById("btn-demo-org-admin").addEventListener("click", () => {
+    loginAs("admin@greenvalley.edu", "admin123");
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Organizations — Platform Admin</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/app.css"/>
+</head>
+<body>
+<div id="admin-shell"></div>
+<template id="page-template">
+  <div class="max-w-5xl space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <p class="text-on-surface-variant">Create, edit, and delete organizations.</p>
+      <button type="button" id="btn-add" class="shrink-0 px-4 py-2 bg-primary-container text-on-primary-container rounded-lg text-sm font-medium flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-sm">add</span>
+        New organization
+      </button>
+    </div>
+
+    <div class="relative">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
+      <input id="search" type="search" placeholder="Search by name or domain…"
+        class="w-full rounded-lg border-outline-variant bg-surface pl-10 pr-4 py-2.5 text-sm focus:border-primary focus:ring-primary"/>
+    </div>
+
+    <div id="list" class="space-y-3"></div>
+
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+      <p id="page-info" class="text-sm text-on-surface-variant"></p>
+      <div class="flex items-center gap-2">
+        <button type="button" id="btn-prev" class="px-3 py-1.5 text-sm rounded-lg border border-outline-variant disabled:opacity-40">Previous</button>
+        <span id="page-num" class="text-sm text-on-surface-variant tabular-nums"></span>
+        <button type="button" id="btn-next" class="px-3 py-1.5 text-sm rounded-lg border border-outline-variant disabled:opacity-40">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="org-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div id="org-modal-backdrop" class="absolute inset-0 bg-black/40"></div>
+    <div class="relative bg-surface border border-outline-variant rounded-2xl p-6 w-full max-w-md shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <h3 id="modal-title" class="text-lg font-semibold text-on-surface">New organization</h3>
+        <button type="button" id="btn-close-modal" class="p-1 rounded-full hover:bg-surface-container-high"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form id="org-form" class="space-y-3">
+        <input type="hidden" id="org_id"/>
+        <div>
+          <label class="text-sm text-on-surface-variant">Organization name</label>
+          <input id="org_name" required class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low"/>
+        </div>
+        <div>
+          <label class="text-sm text-on-surface-variant">Domains</label>
+          <input id="org_domains" placeholder="school.edu, campus.org" class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low"/>
+          <p class="text-xs text-on-surface-variant mt-1">Comma-separated.</p>
+        </div>
+        <div id="admin-fields" class="border-t border-outline-variant/40 pt-3 space-y-3">
+          <p class="text-xs uppercase tracking-wider text-on-surface-variant">First admin account</p>
+          <input id="admin_name" placeholder="Admin name" class="w-full rounded-lg border-outline-variant bg-surface-container-low"/>
+          <input id="admin_email" type="email" placeholder="Admin email" class="w-full rounded-lg border-outline-variant bg-surface-container-low"/>
+          <input id="admin_phone" placeholder="Phone" class="w-full rounded-lg border-outline-variant bg-surface-container-low"/>
+          <input id="admin_password" type="password" placeholder="Password" class="w-full rounded-lg border-outline-variant bg-surface-container-low"/>
+        </div>
+        <p id="form-error" class="hidden text-sm text-error"></p>
+        <div class="flex gap-3 pt-1">
+          <button type="submit" class="flex-1 py-2.5 bg-primary-container text-on-primary-container rounded-lg text-sm font-medium">Save</button>
+          <button type="button" id="btn-cancel-modal" class="flex-1 py-2.5 border border-outline-variant rounded-lg text-sm">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</template>
+<script src="../js/seed.js"></script>
+<script src="../js/store.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/layout.js"></script>
+<script src="../js/admin-layout.js"></script>
+<script>
+  XplainAdminLayout.init({ active: "organizations", title: "Organizations" });
+
+  const PAGE_SIZE = 5;
+  let page = 1;
+  let query = "";
+  let editingId = null;
+
+  function filtered() {
+    const q = query.trim().toLowerCase();
+    let orgs = XplainStore.getOrganizations().slice().sort((a, b) => a.name.localeCompare(b.name));
+    if (q) {
+      orgs = orgs.filter(
+        (o) =>
+          (o.name || "").toLowerCase().includes(q) ||
+          (o.domains || []).some((d) => d.toLowerCase().includes(q))
+      );
+    }
+    return orgs;
+  }
+
+  function render() {
+    const orgs = filtered();
+    const total = orgs.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    if (page > totalPages) page = totalPages;
+    const start = (page - 1) * PAGE_SIZE;
+    const slice = orgs.slice(start, start + PAGE_SIZE);
+    const list = document.getElementById("list");
+
+    if (!total) {
+      list.innerHTML = `<p class="text-sm text-on-surface-variant py-8 text-center">${
+        query ? "No organizations match your search." : "No organizations yet."
+      }</p>`;
+    } else {
+      list.innerHTML = slice
+        .map((org) => {
+          const users = XplainStore.getUsersForOrg(org.id);
+          const logo = org.logo_data_url
+            ? `<img src="${org.logo_data_url}" class="w-11 h-11 rounded-lg object-cover" alt=""/>`
+            : `<span class="w-11 h-11 rounded-lg bg-primary-container/15 text-primary flex items-center justify-center"><span class="material-symbols-outlined">school</span></span>`;
+          return `
+        <article class="bg-surface border border-outline-variant rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-start gap-3 min-w-0">
+            ${logo}
+            <div class="min-w-0">
+              <h3 class="font-semibold text-on-surface truncate">${XplainUI.escapeHtml(org.name)}</h3>
+              <p class="text-sm text-on-surface-variant truncate">${XplainUI.escapeHtml((org.domains || []).join(", ") || "No domains")}</p>
+              <p class="text-xs text-on-surface-variant mt-1">${users.length} teacher${users.length === 1 ? "" : "s"}</p>
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2 shrink-0">
+            <a href="teachers.html?org=${encodeURIComponent(org.id)}" class="text-xs px-3 py-1.5 rounded-lg border border-outline-variant hover:bg-surface-container-low">Teachers</a>
+            <button type="button" data-action="edit" data-id="${org.id}" class="text-xs px-3 py-1.5 rounded-lg border border-outline-variant hover:bg-surface-container-low">Edit</button>
+            <button type="button" data-action="delete" data-id="${org.id}" class="text-xs px-3 py-1.5 rounded-lg border border-error/40 text-error hover:bg-error-container/30">Delete</button>
+          </div>
+        </article>`;
+        })
+        .join("");
+    }
+
+    const from = total ? start + 1 : 0;
+    const to = Math.min(start + PAGE_SIZE, total);
+    document.getElementById("page-info").textContent = total ? `Showing ${from}–${to} of ${total}` : "0 organizations";
+    document.getElementById("page-num").textContent = `Page ${page} / ${totalPages}`;
+    document.getElementById("btn-prev").disabled = page <= 1;
+    document.getElementById("btn-next").disabled = page >= totalPages || total === 0;
+
+    list.querySelectorAll("[data-action]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (btn.dataset.action === "edit") openModal(btn.dataset.id);
+        else if (btn.dataset.action === "delete") await deleteOrg(btn.dataset.id);
+      });
+    });
+  }
+
+  function openModal(id) {
+    editingId = id || null;
+    document.getElementById("form-error").classList.add("hidden");
+    document.getElementById("org-form").reset();
+    document.getElementById("org_id").value = editingId || "";
+    const adminFields = document.getElementById("admin-fields");
+    if (editingId) {
+      const org = XplainStore.getOrganization(editingId);
+      if (!org) return;
+      document.getElementById("modal-title").textContent = "Edit organization";
+      document.getElementById("org_name").value = org.name;
+      document.getElementById("org_domains").value = (org.domains || []).join(", ");
+      adminFields.classList.add("hidden");
+      ["admin_name", "admin_email", "admin_phone", "admin_password"].forEach((fid) => {
+        document.getElementById(fid).required = false;
+      });
+    } else {
+      document.getElementById("modal-title").textContent = "New organization";
+      adminFields.classList.remove("hidden");
+      ["admin_name", "admin_email", "admin_phone", "admin_password"].forEach((fid) => {
+        document.getElementById(fid).required = true;
+      });
+    }
+    document.getElementById("org-modal").classList.remove("hidden");
+  }
+
+  function closeModal() {
+    document.getElementById("org-modal").classList.add("hidden");
+    editingId = null;
+  }
+
+  async function deleteOrg(id) {
+    const org = XplainStore.getOrganization(id);
+    if (!org) return;
+    const count = XplainStore.getUsersForOrg(id).length;
+    const ok = await XplainUI.confirmDialog({
+      title: "Delete organization?",
+      message: `Delete “${org.name}” and its ${count} teacher${count === 1 ? "" : "s"}? This cannot be undone.`,
+      confirmLabel: "Delete",
+      cancelLabel: "Cancel",
+      danger: true,
+    });
+    if (!ok) return;
+    const result = XplainStore.deleteOrganization(id);
+    if (!result.ok) {
+      XplainUI.toast("Could not delete", result.error, { icon: "error" });
+      return;
+    }
+    XplainUI.toast("Organization deleted", org.name, { icon: "delete" });
+    render();
+  }
+
+  document.getElementById("search").addEventListener("input", (e) => {
+    query = e.target.value;
+    page = 1;
+    render();
+  });
+  document.getElementById("btn-prev").addEventListener("click", () => {
+    page -= 1;
+    render();
+  });
+  document.getElementById("btn-next").addEventListener("click", () => {
+    page += 1;
+    render();
+  });
+  document.getElementById("btn-add").addEventListener("click", () => openModal(null));
+  document.getElementById("btn-close-modal").addEventListener("click", closeModal);
+  document.getElementById("btn-cancel-modal").addEventListener("click", closeModal);
+  document.getElementById("org-modal-backdrop").addEventListener("click", closeModal);
+
+  document.getElementById("org-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const err = document.getElementById("form-error");
+    err.classList.add("hidden");
+    let result;
+    if (editingId) {
+      result = XplainStore.saveOrganization(editingId, {
+        name: document.getElementById("org_name").value,
+        domains: document.getElementById("org_domains").value,
+      });
+    } else {
+      result = XplainStore.createOrganizationWithAdmin({
+        orgName: document.getElementById("org_name").value,
+        domains: document.getElementById("org_domains").value,
+        adminName: document.getElementById("admin_name").value,
+        adminEmail: document.getElementById("admin_email").value,
+        adminPhone: document.getElementById("admin_phone").value,
+        adminPassword: document.getElementById("admin_password").value,
+      });
+    }
+    if (!result.ok) {
+      err.textContent = result.error;
+      err.classList.remove("hidden");
+      return;
+    }
+    const wasEdit = !!editingId;
+    closeModal();
+    XplainUI.toast(
+      wasEdit ? "Organization updated" : "Organization created",
+      result.organization.name,
+      { icon: "check" }
+    );
+    render();
+  });
+
+  render();
+</script>
+</body>
+</html>

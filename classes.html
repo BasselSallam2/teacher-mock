@@ -206,12 +206,18 @@
       btn.addEventListener("click", () => openEdit(btn.dataset.id))
     );
     document.querySelectorAll(".del-btn").forEach((btn) =>
-      btn.addEventListener("click", () => {
-        if (confirm("Delete this class?")) {
-          XplainStore.deleteClass(btn.dataset.id);
-          XplainUI.toast("Class deleted", "", { icon: "delete" });
-          render();
-        }
+      btn.addEventListener("click", async () => {
+        const ok = await XplainUI.confirmDialog({
+          title: "Delete class?",
+          message: "This class will be removed from the mock workspace.",
+          confirmLabel: "Delete",
+          cancelLabel: "Cancel",
+          danger: true,
+        });
+        if (!ok) return;
+        XplainStore.deleteClass(btn.dataset.id);
+        XplainUI.toast("Class deleted", "", { icon: "delete" });
+        render();
       })
     );
   }

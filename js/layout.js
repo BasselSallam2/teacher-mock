@@ -53,9 +53,19 @@
     "on-primary-container": "#fcf6ff",
   };
 
+  const AUTH_PAGES = new Set(["login", "signup", "confirm-org"]);
+
   function pageName() {
     const p = location.pathname.split("/").pop() || "index.html";
     return p.replace(".html", "") || "index";
+  }
+
+  function isAdminPath() {
+    return location.pathname.includes("/admin/");
+  }
+
+  function assetPrefix() {
+    return isAdminPath() ? "../" : "";
   }
 
   function navClass(active) {
@@ -65,19 +75,34 @@
     return "flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg font-label-md text-label-md transition-all";
   }
 
+  function orgBrandHtml() {
+    const org = XplainStore.getCurrentOrganization();
+    const name = org?.name || XplainStore.getTeacher().school_name || "Organization";
+    const logo = org?.logo_data_url || XplainStore.getTeacher().logo_data_url;
+    const logoHtml = logo
+      ? `<img src="${logo}" alt="" class="w-8 h-8 rounded-lg object-cover border border-outline-variant/40"/>`
+      : `<span class="w-8 h-8 rounded-lg bg-primary-container/15 text-primary flex items-center justify-center"><span class="material-symbols-outlined text-base">school</span></span>`;
+    return `
+<div class="flex items-center gap-2 min-w-0">
+  ${logoHtml}
+  <span class="font-semibold text-on-surface text-sm md:text-base truncate max-w-[10rem] md:max-w-[16rem]">${XplainUI.escapeHtml(name)}</span>
+</div>`;
+  }
+
   function renderSidebar(active) {
-    const teacher = XplainStore.getTeacher();
-    const initial = (teacher.display_name || "IA")
-      .split(" ")
-      .map((w) => w[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase();
+    const prefix = assetPrefix();
+    const isAdmin = XplainStore.isOrgAdmin();
+    const orgNav = isAdmin
+      ? `<a class="${navClass(active === "organization")}" href="${prefix}organization.html">
+      <span class="material-symbols-outlined">corporate_fare</span>
+      <span>Organization</span>
+    </a>`
+      : "";
 
     return `
 <aside id="sidebar" class="mobile-drawer md:translate-x-0 fixed md:sticky top-0 left-0 z-50 md:z-40 flex flex-col h-screen w-[320px] bg-surface-container-low border-r border-outline-variant p-2 space-y-2 shrink-0">
   <div class="p-4 mb-2 flex items-center gap-3">
-    <img src="assets/logo.png" alt="getXplain" class="w-10 h-10 rounded-lg object-contain shrink-0 bg-white border border-outline-variant/40 p-0.5"/>
+    <img src="${prefix}assets/logo.png" alt="getXplain" class="w-10 h-10 rounded-lg object-contain shrink-0 bg-white border border-outline-variant/40 p-0.5"/>
     <div class="min-w-0">
       <h2 class="font-headline-md font-bold text-on-surface text-[17px] leading-tight truncate">get<span class="text-primary">X</span>plain</h2>
       <p class="text-xs text-on-surface-variant">Teacher Workspace</p>
@@ -85,35 +110,36 @@
     <button class="md:hidden ml-auto p-1" id="close-drawer"><span class="material-symbols-outlined">close</span></button>
   </div>
   <div class="px-2 mb-4">
-    <a href="workspace.html?new=1" class="w-full bg-primary-container text-on-primary-container py-3 px-4 rounded-lg font-label-md text-label-md flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+    <a href="${prefix}workspace.html?new=1" class="w-full bg-primary-container text-on-primary-container py-3 px-4 rounded-lg font-label-md text-label-md flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
       <span class="material-symbols-outlined text-sm">add</span>
       <span>New Lesson</span>
     </a>
   </div>
   <nav class="flex-1 space-y-1 px-2 overflow-y-auto">
-    <a class="${navClass(active === "index")}" href="index.html">
+    <a class="${navClass(active === "index")}" href="${prefix}index.html">
       <span class="material-symbols-outlined">dashboard</span>
       <span>Dashboard</span>
     </a>
-    <a class="${navClass(active === "media")}" href="media.html">
+    <a class="${navClass(active === "media")}" href="${prefix}media.html">
       <span class="material-symbols-outlined">folder_open</span>
       <span>Media Library</span>
     </a>
-    <a class="${navClass(active === "identities")}" href="identities.html">
+    <a class="${navClass(active === "identities")}" href="${prefix}identities.html">
       <span class="material-symbols-outlined">palette</span>
       <span>Identities</span>
     </a>
-    <a class="${navClass(active === "classes")}" href="classes.html">
+    <a class="${navClass(active === "classes")}" href="${prefix}classes.html">
       <span class="material-symbols-outlined">groups</span>
       <span>Classes</span>
     </a>
-    <a class="${navClass(active === "lessons" || active === "workspace")}" href="lessons.html">
+    <a class="${navClass(active === "lessons" || active === "workspace")}" href="${prefix}lessons.html">
       <span class="material-symbols-outlined ${active === "lessons" || active === "workspace" ? "fill-icon" : ""}">menu_book</span>
       <span>Lesson Sessions</span>
     </a>
+    ${orgNav}
   </nav>
   <div class="mt-auto px-2 pb-4 space-y-1 border-t border-outline-variant/30 pt-4">
-    <a class="${navClass(active === "settings")}" href="settings.html">
+    <a class="${navClass(active === "settings")}" href="${prefix}settings.html">
       <span class="material-symbols-outlined">settings</span>
       <span>Settings</span>
     </a>
@@ -121,6 +147,10 @@
       <span class="material-symbols-outlined">contact_support</span>
       <span>Support</span>
     </a>
+    <button type="button" id="logout-link" class="w-full flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg font-label-md text-label-md text-left">
+      <span class="material-symbols-outlined">logout</span>
+      <span>Log out</span>
+    </button>
   </div>
 </aside>
 <div id="drawer-backdrop" class="fixed inset-0 bg-black/40 z-40 hidden md:hidden"></div>`;
@@ -128,31 +158,32 @@
 
   function renderTopbar(opts = {}) {
     const teacher = XplainStore.getTeacher();
+    const prefix = assetPrefix();
+    const initials = (teacher.display_name || "T")
+      .split(" ")
+      .map((w) => w[0])
+      .join("")
+      .slice(0, 2);
     return `
 <header class="flex justify-between items-center px-4 md:px-16 py-4 w-full z-30 bg-surface/80 backdrop-blur-md border-b border-outline-variant sticky top-0 shrink-0">
-  <div class="flex items-center gap-3">
+  <div class="flex items-center gap-3 min-w-0">
     <button class="md:hidden p-2 -ml-2 text-on-surface hover:bg-surface-container-high rounded-full" id="open-drawer">
       <span class="material-symbols-outlined">menu</span>
     </button>
-    <span class="font-bold text-primary text-xl tracking-tight">getXplain</span>
-    ${opts.title ? `<span class="hidden md:inline text-on-surface-variant mx-2">/</span><h2 class="hidden md:block font-semibold text-on-surface text-2xl">${opts.title}</h2>` : ""}
-    <nav class="hidden lg:flex gap-4 ml-6">
-      <a class="text-sm text-on-surface-variant hover:bg-surface-container-high px-2 py-1 rounded" href="#">Help</a>
-      <a class="text-sm text-on-surface-variant hover:bg-surface-container-high px-2 py-1 rounded" href="#">Docs</a>
-    </nav>
+    ${orgBrandHtml()}
+    ${opts.title ? `<span class="hidden md:inline text-on-surface-variant mx-1">/</span><h2 class="hidden md:block font-semibold text-on-surface text-xl truncate">${opts.title}</h2>` : ""}
   </div>
-  <div class="flex items-center gap-3">
+  <div class="flex items-center gap-2 sm:gap-3 shrink-0">
     ${opts.search !== false ? `
     <div class="hidden md:flex relative items-center">
       <span class="material-symbols-outlined absolute left-3 text-outline text-sm">search</span>
       <input id="global-search" class="bg-surface-container-low border border-outline-variant rounded-full pl-9 pr-4 py-1.5 text-sm focus:outline-none focus:border-primary w-48" placeholder="Search..." type="text"/>
     </div>` : ""}
-    <a href="settings.html" class="hidden sm:block text-sm text-primary hover:underline">School Settings</a>
     <button class="p-1.5 rounded-full hover:bg-surface-container-high text-on-surface-variant" title="Notifications">
       <span class="material-symbols-outlined">notifications</span>
     </button>
-    <a href="settings.html" class="w-9 h-9 rounded-full bg-surface-variant border border-outline-variant flex items-center justify-center overflow-hidden text-xs font-bold text-primary" title="${XplainUI.escapeHtml(teacher.display_name)}">
-      ${(teacher.display_name || "T").split(" ").map((w) => w[0]).join("").slice(0, 2)}
+    <a href="${prefix}settings.html" class="w-9 h-9 rounded-full bg-surface-variant border border-outline-variant flex items-center justify-center overflow-hidden text-xs font-bold text-primary" title="${XplainUI.escapeHtml(teacher.display_name)}">
+      ${XplainUI.escapeHtml(initials)}
     </a>
   </div>
 </header>`;
@@ -172,43 +203,53 @@
 </footer>`;
   }
 
+  function applyTailwind() {
+    if (!window.tailwind) return;
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: TAILWIND_COLORS,
+          borderRadius: { DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px" },
+          spacing: {
+            unit: "8px",
+            "margin-tablet": "32px",
+            "margin-desktop": "64px",
+            gutter: "24px",
+            "container-max": "1280px",
+            "margin-mobile": "16px",
+            "split-view-sidebar": "320px",
+            base: "4px",
+          },
+          fontFamily: {
+            "headline-xl": ["Nunito", "sans-serif"],
+            "label-md": ["Space Grotesk", "sans-serif"],
+            "body-lg": ["Space Grotesk", "sans-serif"],
+            "body-md": ["Space Grotesk", "sans-serif"],
+            "headline-md": ["Nunito", "sans-serif"],
+            "label-sm": ["Space Grotesk", "sans-serif"],
+            "headline-lg-mobile": ["Nunito", "sans-serif"],
+            "headline-lg": ["Nunito", "sans-serif"],
+            sans: ["Space Grotesk", "sans-serif"],
+          },
+        },
+      },
+    };
+  }
+
   const Layout = {
     colors: TAILWIND_COLORS,
+    applyTailwind,
     init(opts = {}) {
-      if (window.tailwind) {
-        tailwind.config = {
-          darkMode: "class",
-          theme: {
-            extend: {
-              colors: TAILWIND_COLORS,
-              borderRadius: { DEFAULT: "0.25rem", lg: "0.5rem", xl: "0.75rem", full: "9999px" },
-              spacing: {
-                unit: "8px",
-                "margin-tablet": "32px",
-                "margin-desktop": "64px",
-                gutter: "24px",
-                "container-max": "1280px",
-                "margin-mobile": "16px",
-                "split-view-sidebar": "320px",
-                base: "4px",
-              },
-              fontFamily: {
-                "headline-xl": ["Nunito", "sans-serif"],
-                "label-md": ["Space Grotesk", "sans-serif"],
-                "body-lg": ["Space Grotesk", "sans-serif"],
-                "body-md": ["Space Grotesk", "sans-serif"],
-                "headline-md": ["Nunito", "sans-serif"],
-                "label-sm": ["Space Grotesk", "sans-serif"],
-                "headline-lg-mobile": ["Nunito", "sans-serif"],
-                "headline-lg": ["Nunito", "sans-serif"],
-                sans: ["Space Grotesk", "sans-serif"],
-              },
-            },
-          },
-        };
-      }
+      applyTailwind();
 
       const active = opts.active || pageName();
+      const skipAuth = opts.skipAuth === true || AUTH_PAGES.has(active);
+
+      if (!skipAuth && !isAdminPath()) {
+        XplainStore.requireTeacherAuth(assetPrefix() + "login.html");
+      }
+
       const shell = document.getElementById("app-shell");
       if (!shell) return;
 
@@ -248,6 +289,11 @@
       document.getElementById("support-link")?.addEventListener("click", (e) => {
         e.preventDefault();
         XplainUI.toast("Support", "This is a UI mock — no tickets are sent.", { icon: "contact_support" });
+      });
+
+      document.getElementById("logout-link")?.addEventListener("click", () => {
+        XplainStore.logout();
+        location.href = assetPrefix() + "login.html";
       });
 
       return content;

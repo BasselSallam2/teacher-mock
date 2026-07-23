@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Confirm organization — getXplain</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/app.css"/>
+</head>
+<body class="bg-background text-on-background antialiased min-h-screen">
+<div id="app-shell" class="min-h-screen flex flex-col">
+  <header class="px-6 py-5 flex items-center gap-3">
+    <img src="assets/logo.png" alt="getXplain" class="w-9 h-9 rounded-lg object-contain bg-white border border-outline-variant/40 p-0.5"/>
+    <span class="font-headline-md font-bold text-on-surface text-lg">get<span class="text-primary">X</span>plain</span>
+  </header>
+  <main class="flex-1 flex items-center justify-center px-4 pb-16">
+    <div class="w-full max-w-md">
+      <div class="bg-surface border border-outline-variant rounded-2xl p-8 shadow-sm">
+        <div class="w-14 h-14 rounded-xl bg-primary-container/15 text-primary flex items-center justify-center mb-5">
+          <span class="material-symbols-outlined text-3xl">domain</span>
+        </div>
+        <h1 class="text-2xl font-semibold text-on-surface mb-2">Registered organization</h1>
+        <p class="text-on-surface-variant mb-6" id="confirm-copy">
+          Your email domain belongs to a registered organization. Confirm to join as a teacher.
+        </p>
+        <div class="bg-surface-container-low border border-outline-variant/60 rounded-xl p-4 mb-6 flex items-center gap-4">
+          <div id="org-logo" class="w-12 h-12 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center overflow-hidden shrink-0">
+            <span class="material-symbols-outlined">school</span>
+          </div>
+          <div class="min-w-0">
+            <p class="font-semibold text-on-surface truncate" id="org-name">—</p>
+            <p class="text-sm text-on-surface-variant truncate" id="org-domains"></p>
+          </div>
+        </div>
+        <p id="error" class="hidden text-sm text-error mb-3"></p>
+        <div class="flex flex-col sm:flex-row gap-3">
+          <button type="button" id="btn-confirm" class="flex-1 py-3 bg-primary-container text-on-primary-container rounded-xl font-medium hover:opacity-90">
+            Confirm &amp; join
+          </button>
+          <button type="button" id="btn-cancel" class="flex-1 py-3 border border-outline-variant rounded-xl text-on-surface-variant hover:bg-surface-container-low">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="js/seed.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/layout.js"></script>
+<script>
+  XplainLayout.applyTailwind();
+
+  const pending = XplainStore.getPendingSignup();
+  if (!pending) {
+    location.replace("signup.html");
+  } else {
+    const org = XplainStore.getOrganization(pending.organization_id);
+    if (!org) {
+      XplainStore.clearPendingSignup();
+      location.replace("signup.html");
+    } else {
+      document.getElementById("org-name").textContent = org.name;
+      document.getElementById("org-domains").textContent =
+        (org.domains || []).join(", ") || "No domains";
+      document.getElementById("confirm-copy").innerHTML =
+        `Your email domain is registered to <strong class="text-on-surface">${XplainUI.escapeHtml(org.name)}</strong>. Confirm to join as a teacher.`;
+      if (org.logo_data_url) {
+        document.getElementById("org-logo").innerHTML =
+          `<img src="${org.logo_data_url}" class="w-full h-full object-cover" alt=""/>`;
+      }
+    }
+  }
+
+  document.getElementById("btn-confirm").addEventListener("click", () => {
+    const err = document.getElementById("error");
+    err.classList.add("hidden");
+    const result = XplainStore.confirmOrgJoin();
+    if (!result.ok) {
+      err.textContent = result.error;
+      err.classList.remove("hidden");
+      return;
+    }
+    location.href = "index.html";
+  });
+
+  document.getElementById("btn-cancel").addEventListener("click", () => {
+    XplainStore.clearPendingSignup();
+    location.href = "signup.html";
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Platform Dashboard — getXplain</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/app.css"/>
+</head>
+<body>
+<div id="admin-shell"></div>
+<template id="page-template">
+  <div class="max-w-5xl space-y-8">
+    <div>
+      <p class="text-on-surface-variant">Overview of users, media, and organizations.</p>
+    </div>
+    <section id="stats" class="grid grid-cols-2 lg:grid-cols-4 gap-4"></section>
+    <section class="grid sm:grid-cols-2 gap-4">
+      <a href="organizations.html" class="bg-surface border border-outline-variant rounded-xl p-5 hover:bg-surface-container-low transition-colors flex items-start gap-3">
+        <span class="material-symbols-outlined text-primary text-2xl">corporate_fare</span>
+        <div>
+          <p class="font-semibold text-on-surface">Organizations</p>
+          <p class="text-sm text-on-surface-variant mt-1">Create, edit, and delete organizations.</p>
+        </div>
+      </a>
+      <a href="teachers.html" class="bg-surface border border-outline-variant rounded-xl p-5 hover:bg-surface-container-low transition-colors flex items-start gap-3">
+        <span class="material-symbols-outlined text-primary text-2xl">group</span>
+        <div>
+          <p class="font-semibold text-on-surface">Teachers</p>
+          <p class="text-sm text-on-surface-variant mt-1">Manage teachers across all organizations.</p>
+        </div>
+      </a>
+    </section>
+  </div>
+</template>
+<script src="../js/seed.js"></script>
+<script src="../js/store.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/layout.js"></script>
+<script src="../js/admin-layout.js"></script>
+<script>
+  XplainAdminLayout.init({ active: "dashboard", title: "Dashboard" });
+
+  const s = XplainStore.getPlatformStats();
+  document.getElementById("stats").innerHTML = [
+    { label: "Users", value: s.users, icon: "group", href: "teachers.html" },
+    { label: "Files", value: s.files, icon: "folder" },
+    { label: "File size", value: XplainUI.formatBytes(s.fileSizeBytes), icon: "hard_drive" },
+    { label: "Organizations", value: s.organizations, icon: "corporate_fare", href: "organizations.html" },
+  ]
+    .map(
+      (c) => `
+    <${c.href ? `a href="${c.href}"` : "div"} class="bg-surface border border-outline-variant rounded-xl p-5 ${c.href ? "hover:bg-surface-container-low transition-colors block" : ""}">
+      <div class="flex items-center gap-2 text-on-surface-variant mb-2">
+        <span class="material-symbols-outlined text-base">${c.icon}</span>
+        <span class="text-xs uppercase tracking-wider">${c.label}</span>
+      </div>
+      <p class="text-2xl font-semibold text-on-surface">${c.value}</p>
+    </${c.href ? "a" : "div"}>`
+    )
+    .join("");
+</script>
+</body>
+</html>

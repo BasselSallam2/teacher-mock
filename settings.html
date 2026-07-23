@@ -15,16 +15,30 @@
   <main class="flex-1 p-4 md:p-16 overflow-y-auto">
     <div class="max-w-xl mx-auto space-y-8">
       <div>
-        <h1 class="text-3xl font-semibold text-on-surface">School Settings</h1>
-        <p class="text-on-surface-variant mt-2">Branding appears on every lesson export (mock).</p>
+        <h1 class="text-3xl font-semibold text-on-surface">Settings</h1>
+        <p class="text-on-surface-variant mt-2">Your personal profile for this workspace.</p>
       </div>
+
+      <section class="bg-surface border border-outline-variant rounded-xl p-6">
+        <p class="text-xs uppercase tracking-wider text-on-surface-variant mb-2">Organization</p>
+        <div class="flex items-center gap-3">
+          <div id="org-logo" class="w-12 h-12 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center overflow-hidden shrink-0">
+            <span class="material-symbols-outlined">school</span>
+          </div>
+          <div class="min-w-0">
+            <p class="font-semibold text-on-surface" id="org-name-label">—</p>
+            <p class="text-sm text-on-surface-variant" id="org-role-label"></p>
+          </div>
+        </div>
+        <p id="org-admin-hint" class="hidden text-sm text-on-surface-variant mt-3">
+          Edit name, logo, and domains in
+          <a href="organization.html" class="text-primary hover:underline">Organization</a>.
+        </p>
+      </section>
+
       <form id="settings-form" class="bg-surface border border-outline-variant rounded-xl p-6 space-y-5">
         <div>
-          <label class="text-sm text-on-surface-variant">School name</label>
-          <input id="school_name" class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low" required/>
-        </div>
-        <div>
-          <label class="text-sm text-on-surface-variant">Teacher display name</label>
+          <label class="text-sm text-on-surface-variant">Display name</label>
           <input id="display_name" class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low" required/>
         </div>
         <div>
@@ -33,18 +47,6 @@
             <option value="en">English</option>
             <option value="ar">Arabic (RTL — display only in mock)</option>
           </select>
-        </div>
-        <div>
-          <label class="text-sm text-on-surface-variant">School logo</label>
-          <div class="mt-2 flex items-center gap-4">
-            <div id="logo-preview" class="w-16 h-16 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center overflow-hidden">
-              <span class="material-symbols-outlined">school</span>
-            </div>
-            <div>
-              <input type="file" id="logo-input" accept="image/*" class="text-sm"/>
-              <p class="text-xs text-on-surface-variant mt-1">Stored as data URL in localStorage (mock).</p>
-            </div>
-          </div>
         </div>
         <div class="flex flex-wrap gap-3 pt-2">
           <button type="submit" class="px-5 py-2.5 bg-primary text-on-primary rounded-lg text-sm">Save settings</button>
@@ -64,48 +66,44 @@
 
   function fill() {
     const t = XplainStore.getTeacher();
-    document.getElementById("school_name").value = t.school_name || "";
+    const org = XplainStore.getCurrentOrganization();
+    const user = XplainStore.getCurrentUser();
     document.getElementById("display_name").value = t.display_name || "";
     document.getElementById("locale").value = t.locale || "en";
     document.getElementById("email-label").textContent = t.email;
-    const prev = document.getElementById("logo-preview");
-    if (t.logo_data_url) {
-      prev.innerHTML = `<img src="${t.logo_data_url}" class="w-full h-full object-cover" alt=""/>`;
+    document.getElementById("org-name-label").textContent = org?.name || t.school_name || "—";
+    document.getElementById("org-role-label").textContent =
+      user?.role === "org_admin" ? "Organization admin" : "Teacher";
+    if (user?.role === "org_admin") {
+      document.getElementById("org-admin-hint").classList.remove("hidden");
+    }
+    if (org?.logo_data_url || t.logo_data_url) {
+      document.getElementById("org-logo").innerHTML =
+        `<img src="${org?.logo_data_url || t.logo_data_url}" class="w-full h-full object-cover" alt=""/>`;
     }
   }
 
-  document.getElementById("logo-input").addEventListener("change", (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      document.getElementById("logo-preview").innerHTML =
-        `<img src="${reader.result}" class="w-full h-full object-cover" alt=""/>`;
-      document.getElementById("logo-preview").dataset.url = reader.result;
-    };
-    reader.readAsDataURL(file);
-  });
-
   document.getElementById("settings-form").addEventListener("submit", (e) => {
     e.preventDefault();
-    const logo = document.getElementById("logo-preview").dataset.url;
     XplainStore.updateTeacher({
-      school_name: document.getElementById("school_name").value,
       display_name: document.getElementById("display_name").value,
       locale: document.getElementById("locale").value,
-      ...(logo ? { logo_data_url: logo } : {}),
     });
-    XplainUI.toast("Settings saved", "Branding will show on exports.", { icon: "check" });
-    // refresh sidebar branding
+    XplainUI.toast("Settings saved", "", { icon: "check" });
     location.reload();
   });
 
-  document.getElementById("btn-reset").addEventListener("click", () => {
-    if (confirm("Reset all mock data to seed?")) {
-      XplainStore.reset();
-      XplainUI.toast("Demo reset", "", { icon: "restart_alt" });
-      location.reload();
-    }
+  document.getElementById("btn-reset").addEventListener("click", async () => {
+    const ok = await XplainUI.confirmDialog({
+      title: "Reset demo data?",
+      message: "All mock data will be restored to the seed. You will be logged out.",
+      confirmLabel: "Reset",
+      cancelLabel: "Cancel",
+      danger: true,
+    });
+    if (!ok) return;
+    XplainStore.reset();
+    location.href = "login.html";
   });
 
   fill();

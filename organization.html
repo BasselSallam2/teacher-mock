@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Organization — getXplain</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/app.css"/>
+</head>
+<body>
+<div id="app-shell"></div>
+<template id="page-template">
+  <main class="flex-1 p-4 md:p-16 overflow-y-auto">
+    <div class="max-w-3xl mx-auto space-y-8">
+      <div>
+        <h1 class="text-3xl font-semibold text-on-surface">Organization</h1>
+        <p class="text-on-surface-variant mt-2">Manage branding, domains, and teachers for your school.</p>
+      </div>
+
+      <form id="org-form" class="bg-surface border border-outline-variant rounded-xl p-6 space-y-5">
+        <div>
+          <label class="text-sm text-on-surface-variant" for="org_name">Organization name</label>
+          <input id="org_name" class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low" required/>
+        </div>
+        <div>
+          <label class="text-sm text-on-surface-variant">Logo</label>
+          <div class="mt-2 flex items-center gap-4">
+            <div id="logo-preview" class="w-16 h-16 rounded-lg bg-primary-container text-on-primary-container flex items-center justify-center overflow-hidden">
+              <span class="material-symbols-outlined">school</span>
+            </div>
+            <div>
+              <input type="file" id="logo-input" accept="image/*" class="text-sm"/>
+              <p class="text-xs text-on-surface-variant mt-1">Shown in the header across the workspace.</p>
+            </div>
+          </div>
+        </div>
+        <button type="submit" class="px-5 py-2.5 bg-primary text-on-primary rounded-lg text-sm">Save organization</button>
+      </form>
+
+      <section class="bg-surface border border-outline-variant rounded-xl p-6 space-y-4">
+        <div>
+          <h2 class="text-lg font-semibold text-on-surface">Email domains</h2>
+          <p class="text-sm text-on-surface-variant mt-1">Teachers signing up with these domains will be invited to join.</p>
+        </div>
+        <ul id="domain-list" class="space-y-2"></ul>
+        <form id="domain-form" class="flex flex-col sm:flex-row gap-2">
+          <input id="new_domain" type="text" placeholder="school.edu" required
+            class="flex-1 rounded-lg border-outline-variant bg-surface-container-low"/>
+          <button type="submit" class="px-4 py-2 bg-primary-container text-on-primary-container rounded-lg text-sm shrink-0">Add domain</button>
+        </form>
+      </section>
+
+      <section class="bg-surface border border-outline-variant rounded-xl p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-semibold text-on-surface">Teachers</h2>
+            <p class="text-sm text-on-surface-variant mt-1">Add, edit, or remove teachers. Admins are listed first.</p>
+          </div>
+          <button type="button" id="btn-add-teacher" class="shrink-0 px-4 py-2 bg-primary-container text-on-primary-container rounded-lg text-sm font-medium flex items-center gap-1.5 hover:opacity-90">
+            <span class="material-symbols-outlined text-sm">person_add</span>
+            Add teacher
+          </button>
+        </div>
+
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
+          <input id="teacher-search" type="search" placeholder="Search by name, email, or phone…"
+            class="w-full rounded-lg border-outline-variant bg-surface-container-low pl-10 pr-4 py-2.5 text-sm focus:border-primary focus:ring-primary"/>
+        </div>
+
+        <ul id="teacher-list" class="divide-y divide-outline-variant/40 min-h-[4rem]"></ul>
+
+        <div id="teacher-pagination" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-outline-variant/40">
+          <p id="teacher-page-info" class="text-sm text-on-surface-variant"></p>
+          <div class="flex items-center gap-2">
+            <button type="button" id="btn-prev-page" class="px-3 py-1.5 text-sm rounded-lg border border-outline-variant disabled:opacity-40 hover:bg-surface-container-low">Previous</button>
+            <span id="teacher-page-num" class="text-sm text-on-surface-variant tabular-nums"></span>
+            <button type="button" id="btn-next-page" class="px-3 py-1.5 text-sm rounded-lg border border-outline-variant disabled:opacity-40 hover:bg-surface-container-low">Next</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Teacher modal -->
+  <div id="teacher-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div id="teacher-modal-backdrop" class="absolute inset-0 bg-black/40"></div>
+    <div class="relative bg-surface border border-outline-variant rounded-2xl p-6 w-full max-w-md shadow-xl space-y-4">
+      <div class="flex items-center justify-between gap-3">
+        <h3 id="teacher-modal-title" class="text-lg font-semibold text-on-surface">Add teacher</h3>
+        <button type="button" id="btn-close-modal" class="p-1 rounded-full hover:bg-surface-container-high text-on-surface-variant">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
+      <form id="teacher-form" class="space-y-3">
+        <input type="hidden" id="teacher_id"/>
+        <div>
+          <label class="text-sm text-on-surface-variant" for="teacher_name">Full name</label>
+          <input id="teacher_name" required class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low"/>
+        </div>
+        <div>
+          <label class="text-sm text-on-surface-variant" for="teacher_email">Email</label>
+          <input id="teacher_email" type="email" required class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low"/>
+        </div>
+        <div>
+          <label class="text-sm text-on-surface-variant" for="teacher_phone">Phone</label>
+          <input id="teacher_phone" type="tel" required class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low"/>
+        </div>
+        <div id="password-field">
+          <label class="text-sm text-on-surface-variant" for="teacher_password">Password</label>
+          <input id="teacher_password" type="password" minlength="6" class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low"/>
+          <p id="password-hint" class="text-xs text-on-surface-variant mt-1 hidden">Leave blank to keep the current password.</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-sm text-on-surface-variant" for="teacher_role">Role</label>
+            <select id="teacher_role" class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low">
+              <option value="teacher">Teacher</option>
+              <option value="org_admin">Admin</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-sm text-on-surface-variant" for="teacher_status">Status</label>
+            <select id="teacher_status" class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+        <p id="teacher-form-error" class="hidden text-sm text-error"></p>
+        <div class="flex gap-3 pt-2">
+          <button type="submit" class="flex-1 py-2.5 bg-primary-container text-on-primary-container rounded-lg text-sm font-medium">Save</button>
+          <button type="button" id="btn-cancel-modal" class="flex-1 py-2.5 border border-outline-variant rounded-lg text-sm text-on-surface-variant">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</template>
+<script src="js/seed.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/layout.js"></script>
+<script>
+  XplainLayout.init({ active: "organization", title: "Organization" });
+
+  if (!XplainStore.isOrgAdmin()) {
+    location.replace("index.html");
+    throw new Error("org admin required");
+  }
+
+  const PAGE_SIZE = 5;
+  let org = XplainStore.getCurrentOrganization();
+  let teacherPage = 1;
+  let teacherQuery = "";
+  let editingId = null;
+
+  function setLogoPreview(url) {
+    const prev = document.getElementById("logo-preview");
+    if (url) {
+      prev.innerHTML = `<img src="${url}" class="w-full h-full object-cover" alt=""/>`;
+      prev.dataset.url = url;
+    } else {
+      prev.innerHTML = `<span class="material-symbols-outlined">school</span>`;
+      delete prev.dataset.url;
+    }
+  }
+
+  function renderDomains() {
+    org = XplainStore.getCurrentOrganization();
+    const list = document.getElementById("domain-list");
+    const domains = org?.domains || [];
+    if (!domains.length) {
+      list.innerHTML = `<li class="text-sm text-on-surface-variant">No domains yet.</li>`;
+      return;
+    }
+    list.innerHTML = domains
+      .map(
+        (d) => `
+      <li class="flex items-center justify-between gap-3 bg-surface-container-low rounded-lg px-3 py-2">
+        <span class="text-sm text-on-surface font-medium">${XplainUI.escapeHtml(d)}</span>
+        <button type="button" data-domain="${XplainUI.escapeHtml(d)}" class="btn-remove-domain text-xs text-error hover:underline">Remove</button>
+      </li>`
+      )
+      .join("");
+    list.querySelectorAll(".btn-remove-domain").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        XplainStore.removeOrgDomain(org.id, btn.dataset.domain);
+        renderDomains();
+        XplainUI.toast("Domain removed", btn.dataset.domain, { icon: "check" });
+      });
+    });
+  }
+
+  function filteredTeachers() {
+    org = XplainStore.getCurrentOrganization();
+    const q = teacherQuery.trim().toLowerCase();
+    let users = XplainStore.getUsersForOrg(org.id);
+    if (q) {
+      users = users.filter(
+        (u) =>
+          (u.name || "").toLowerCase().includes(q) ||
+          (u.email || "").toLowerCase().includes(q) ||
+          (u.phone || "").toLowerCase().includes(q)
+      );
+    }
+    return users;
+  }
+
+  function renderTeachers() {
+    const users = filteredTeachers();
+    const total = users.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    if (teacherPage > totalPages) teacherPage = totalPages;
+    if (teacherPage < 1) teacherPage = 1;
+    const start = (teacherPage - 1) * PAGE_SIZE;
+    const pageUsers = users.slice(start, start + PAGE_SIZE);
+    const list = document.getElementById("teacher-list");
+    const me = XplainStore.getCurrentUser();
+
+    if (!total) {
+      list.innerHTML = `<li class="py-6 text-center text-sm text-on-surface-variant">${
+        teacherQuery ? "No teachers match your search." : "No teachers yet. Add one to get started."
+      }</li>`;
+    } else {
+      list.innerHTML = pageUsers
+        .map((u) => {
+          const isAdmin = u.role === "org_admin";
+          const inactive = u.status === "inactive";
+          const isSelf = me && me.id === u.id;
+          return `
+      <li class="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+        isAdmin ? "bg-primary-container/5 -mx-2 px-2 rounded-lg" : ""
+      }">
+        <div class="min-w-0">
+          <p class="font-medium text-on-surface truncate">
+            ${XplainUI.escapeHtml(u.name)}
+            ${isSelf ? `<span class="ml-1 text-[10px] text-on-surface-variant">(you)</span>` : ""}
+            ${
+              isAdmin
+                ? `<span class="ml-2 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary-container text-on-primary-container">Admin</span>`
+                : ""
+            }
+            ${
+              inactive
+                ? `<span class="ml-1 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-surface-variant text-on-surface-variant">Inactive</span>`
+                : ""
+            }
+          </p>
+          <p class="text-sm text-on-surface-variant truncate">${XplainUI.escapeHtml(u.email)} · ${XplainUI.escapeHtml(u.phone || "—")}</p>
+        </div>
+        <div class="flex flex-wrap gap-2 shrink-0">
+          <button type="button" data-action="edit" data-id="${u.id}" class="text-xs px-3 py-1.5 rounded-lg border border-outline-variant hover:bg-surface-container-low">Edit</button>
+          <button type="button" data-action="remove" data-id="${u.id}" ${isSelf ? "disabled" : ""} class="text-xs px-3 py-1.5 rounded-lg border border-error/40 text-error hover:bg-error-container/30 disabled:opacity-40 disabled:cursor-not-allowed">Remove</button>
+        </div>
+      </li>`;
+        })
+        .join("");
+    }
+
+    const from = total ? start + 1 : 0;
+    const to = Math.min(start + PAGE_SIZE, total);
+    document.getElementById("teacher-page-info").textContent = total
+      ? `Showing ${from}–${to} of ${total}`
+      : "0 teachers";
+    document.getElementById("teacher-page-num").textContent = `Page ${teacherPage} / ${totalPages}`;
+    document.getElementById("btn-prev-page").disabled = teacherPage <= 1;
+    document.getElementById("btn-next-page").disabled = teacherPage >= totalPages || total === 0;
+
+    list.querySelectorAll("[data-action]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.id;
+        if (btn.dataset.action === "edit") openTeacherModal(id);
+        else if (btn.dataset.action === "remove") removeTeacher(id);
+      });
+    });
+  }
+
+  function openTeacherModal(userId) {
+    editingId = userId || null;
+    const err = document.getElementById("teacher-form-error");
+    err.classList.add("hidden");
+    document.getElementById("teacher-form").reset();
+    document.getElementById("teacher_id").value = editingId || "";
+    const pw = document.getElementById("teacher_password");
+    const hint = document.getElementById("password-hint");
+    if (editingId) {
+      const u = XplainStore.getUser(editingId);
+      if (!u) return;
+      document.getElementById("teacher-modal-title").textContent = "Edit teacher";
+      document.getElementById("teacher_name").value = u.name;
+      document.getElementById("teacher_email").value = u.email;
+      document.getElementById("teacher_phone").value = u.phone || "";
+      document.getElementById("teacher_role").value = u.role;
+      document.getElementById("teacher_status").value = u.status || "active";
+      pw.required = false;
+      pw.value = "";
+      hint.classList.remove("hidden");
+    } else {
+      document.getElementById("teacher-modal-title").textContent = "Add teacher";
+      document.getElementById("teacher_role").value = "teacher";
+      document.getElementById("teacher_status").value = "active";
+      pw.required = true;
+      hint.classList.add("hidden");
+    }
+    document.getElementById("teacher-modal").classList.remove("hidden");
+  }
+
+  function closeTeacherModal() {
+    document.getElementById("teacher-modal").classList.add("hidden");
+    editingId = null;
+  }
+
+  async function removeTeacher(userId) {
+    const u = XplainStore.getUser(userId);
+    if (!u) return;
+    const ok = await XplainUI.confirmDialog({
+      title: "Remove teacher?",
+      message: `Remove ${u.name} (${u.email}) from this organization? This cannot be undone.`,
+      confirmLabel: "Remove",
+      cancelLabel: "Cancel",
+      danger: true,
+    });
+    if (!ok) return;
+    const result = XplainStore.deleteUserFromOrg(org.id, userId);
+    if (!result.ok) {
+      XplainUI.toast("Could not remove", result.error, { icon: "error" });
+      return;
+    }
+    XplainUI.toast("Teacher removed", u.email, { icon: "delete" });
+    renderTeachers();
+  }
+
+  function fill() {
+    org = XplainStore.getCurrentOrganization();
+    if (!org) return;
+    document.getElementById("org_name").value = org.name || "";
+    setLogoPreview(org.logo_data_url);
+    renderDomains();
+    renderTeachers();
+  }
+
+  document.getElementById("logo-input").addEventListener("change", (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setLogoPreview(reader.result);
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById("org-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const logo = document.getElementById("logo-preview").dataset.url;
+    XplainStore.updateOrganization(org.id, {
+      name: document.getElementById("org_name").value.trim(),
+      ...(logo ? { logo_data_url: logo } : {}),
+    });
+    XplainUI.toast("Organization saved", "Header branding updated.", { icon: "check" });
+    location.reload();
+  });
+
+  document.getElementById("domain-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const domain = document.getElementById("new_domain").value;
+    const result = XplainStore.addOrgDomain(org.id, domain);
+    if (!result.ok) {
+      XplainUI.toast("Could not add domain", result.error, { icon: "error" });
+      return;
+    }
+    document.getElementById("new_domain").value = "";
+    renderDomains();
+    XplainUI.toast("Domain added", domain, { icon: "check" });
+  });
+
+  document.getElementById("teacher-search").addEventListener("input", (e) => {
+    teacherQuery = e.target.value;
+    teacherPage = 1;
+    renderTeachers();
+  });
+
+  document.getElementById("btn-prev-page").addEventListener("click", () => {
+    teacherPage -= 1;
+    renderTeachers();
+  });
+  document.getElementById("btn-next-page").addEventListener("click", () => {
+    teacherPage += 1;
+    renderTeachers();
+  });
+
+  document.getElementById("btn-add-teacher").addEventListener("click", () => openTeacherModal(null));
+  document.getElementById("btn-close-modal").addEventListener("click", closeTeacherModal);
+  document.getElementById("btn-cancel-modal").addEventListener("click", closeTeacherModal);
+  document.getElementById("teacher-modal-backdrop").addEventListener("click", closeTeacherModal);
+
+  document.getElementById("teacher-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const err = document.getElementById("teacher-form-error");
+    err.classList.add("hidden");
+    const payload = {
+      name: document.getElementById("teacher_name").value,
+      email: document.getElementById("teacher_email").value,
+      phone: document.getElementById("teacher_phone").value,
+      role: document.getElementById("teacher_role").value,
+      status: document.getElementById("teacher_status").value,
+      password: document.getElementById("teacher_password").value,
+    };
+
+    let result;
+    if (editingId) {
+      const fields = {
+        name: payload.name,
+        email: payload.email,
+        phone: payload.phone,
+        role: payload.role,
+        status: payload.status,
+      };
+      if (payload.password) fields.password = payload.password;
+      result = XplainStore.updateUserForOrg(org.id, editingId, fields);
+    } else {
+      result = XplainStore.createUserForOrg({
+        organization_id: org.id,
+        name: payload.name,
+        email: payload.email,
+        phone: payload.phone,
+        password: payload.password,
+        role: payload.role,
+      });
+      if (result.ok && payload.status === "inactive") {
+        XplainStore.setUserStatus(result.user.id, "inactive");
+      }
+    }
+
+    if (!result.ok) {
+      err.textContent = result.error;
+      err.classList.remove("hidden");
+      return;
+    }
+    const wasEdit = !!editingId;
+    closeTeacherModal();
+    XplainUI.toast(wasEdit ? "Teacher updated" : "Teacher added", result.user.email, {
+      icon: "check",
+    });
+    renderTeachers();
+  });
+
+  fill();
+</script>
+</body>
+</html>

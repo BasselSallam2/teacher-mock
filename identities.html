@@ -250,11 +250,17 @@
       b.addEventListener("click", () => openModal(b.dataset.id))
     );
     document.querySelectorAll(".del-btn").forEach((b) =>
-      b.addEventListener("click", () => {
-        if (confirm("Delete this identity?")) {
-          XplainStore.deleteIdentity(b.dataset.id);
-          render();
-        }
+      b.addEventListener("click", async () => {
+        const ok = await XplainUI.confirmDialog({
+          title: "Delete identity?",
+          message: "This identity will be removed from the mock library.",
+          confirmLabel: "Delete",
+          cancelLabel: "Cancel",
+          danger: true,
+        });
+        if (!ok) return;
+        XplainStore.deleteIdentity(b.dataset.id);
+        render();
       })
     );
   }

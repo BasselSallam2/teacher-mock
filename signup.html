@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sign up — getXplain</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/app.css"/>
+</head>
+<body class="bg-background text-on-background antialiased min-h-screen">
+<div id="app-shell" class="min-h-screen flex flex-col">
+  <header class="px-6 py-5 flex items-center gap-3">
+    <img src="assets/logo.png" alt="getXplain" class="w-9 h-9 rounded-lg object-contain bg-white border border-outline-variant/40 p-0.5"/>
+    <span class="font-headline-md font-bold text-on-surface text-lg">get<span class="text-primary">X</span>plain</span>
+  </header>
+  <main class="flex-1 flex items-center justify-center px-4 pb-16">
+    <div class="w-full max-w-md">
+      <div class="bg-surface border border-outline-variant rounded-2xl p-8 shadow-sm">
+        <h1 class="text-2xl font-semibold text-on-surface mb-1">Create account</h1>
+        <p class="text-sm text-on-surface-variant mb-6">Join your school or start a new organization.</p>
+        <form id="signup-form" class="space-y-4">
+          <div>
+            <label class="text-sm text-on-surface-variant" for="name">Full name</label>
+            <input id="name" type="text" required autocomplete="name"
+              class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low focus:border-primary focus:ring-primary"
+              placeholder="Ms. Salma"/>
+          </div>
+          <div>
+            <label class="text-sm text-on-surface-variant" for="email">Email</label>
+            <input id="email" type="email" required autocomplete="email"
+              class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low focus:border-primary focus:ring-primary"
+              placeholder="you@school.edu"/>
+          </div>
+          <div>
+            <label class="text-sm text-on-surface-variant" for="phone">Phone number</label>
+            <input id="phone" type="tel" required autocomplete="tel"
+              class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low focus:border-primary focus:ring-primary"
+              placeholder="+1 555 0100"/>
+          </div>
+          <div>
+            <label class="text-sm text-on-surface-variant" for="password">Password</label>
+            <input id="password" type="password" required autocomplete="new-password" minlength="6"
+              class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low focus:border-primary focus:ring-primary"/>
+          </div>
+          <div>
+            <label class="text-sm text-on-surface-variant" for="confirm">Confirm password</label>
+            <input id="confirm" type="password" required autocomplete="new-password" minlength="6"
+              class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low focus:border-primary focus:ring-primary"/>
+          </div>
+          <p id="error" class="hidden text-sm text-error"></p>
+          <button type="submit" class="w-full py-3 bg-primary-container text-on-primary-container rounded-xl font-medium hover:opacity-90">
+            Continue
+          </button>
+        </form>
+        <p class="text-sm text-on-surface-variant mt-6 text-center">
+          Already have an account?
+          <a href="login.html" class="text-primary font-medium hover:underline">Sign in</a>
+        </p>
+      </div>
+      <p class="text-xs text-on-surface-variant mt-4 text-center">
+        Tip: use an @greenvalley.edu email to join the seeded organization.
+      </p>
+    </div>
+  </main>
+</div>
+<script src="js/seed.js"></script>
+<script src="js/store.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/layout.js"></script>
+<script>
+  XplainLayout.applyTailwind();
+  const sess = XplainStore.getAuthSession();
+  if (sess?.kind === "teacher") location.replace("index.html");
+
+  document.getElementById("signup-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const err = document.getElementById("error");
+    err.classList.add("hidden");
+    const result = XplainStore.signup({
+      name: document.getElementById("name").value,
+      email: document.getElementById("email").value,
+      phone: document.getElementById("phone").value,
+      password: document.getElementById("password").value,
+      confirmPassword: document.getElementById("confirm").value,
+    });
+    if (!result.ok) {
+      err.textContent = result.error;
+      err.classList.remove("hidden");
+      return;
+    }
+    if (result.needsConfirm) {
+      location.href = "confirm-org.html";
+      return;
+    }
+    location.href = "index.html";
+  });
+</script>
+</body>
+</html>

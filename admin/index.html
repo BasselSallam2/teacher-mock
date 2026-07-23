@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta http-equiv="refresh" content="0;url=dashboard.html"/>
+  <title>Admin — getXplain</title>
+  <script>
+    location.replace(
+      (function () {
+        try {
+          const raw = localStorage.getItem("xplain-teacher-mock-v1");
+          const state = raw ? JSON.parse(raw) : null;
+          if (state?.session?.kind === "platform") return "dashboard.html";
+        } catch (_) {}
+        return "login.html";
+      })()
+    );
+  </script>
+</head>
+<body>
+  <p><a href="login.html">Platform admin login</a></p>
+</body>
+</html>

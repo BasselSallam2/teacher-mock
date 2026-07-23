@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Teachers — Platform Admin</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/app.css"/>
+</head>
+<body>
+<div id="admin-shell"></div>
+<template id="page-template">
+  <div class="max-w-5xl space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <p class="text-on-surface-variant">Manage teachers across all organizations. Admins are listed first.</p>
+      <button type="button" id="btn-add" class="shrink-0 px-4 py-2 bg-primary-container text-on-primary-container rounded-lg text-sm font-medium flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-sm">person_add</span>
+        New teacher
+      </button>
+    </div>
+
+    <div class="flex flex-col sm:flex-row gap-3">
+      <div class="relative flex-1">
+        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
+        <input id="search" type="search" placeholder="Search by name, email, or phone…"
+          class="w-full rounded-lg border-outline-variant bg-surface pl-10 pr-4 py-2.5 text-sm focus:border-primary focus:ring-primary"/>
+      </div>
+      <select id="filter-org" class="sm:w-56 rounded-lg border-outline-variant bg-surface text-sm">
+        <option value="">All organizations</option>
+      </select>
+    </div>
+
+    <ul id="list" class="bg-surface border border-outline-variant rounded-xl divide-y divide-outline-variant/40 overflow-hidden"></ul>
+
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+      <p id="page-info" class="text-sm text-on-surface-variant"></p>
+      <div class="flex items-center gap-2">
+        <button type="button" id="btn-prev" class="px-3 py-1.5 text-sm rounded-lg border border-outline-variant disabled:opacity-40">Previous</button>
+        <span id="page-num" class="text-sm text-on-surface-variant tabular-nums"></span>
+        <button type="button" id="btn-next" class="px-3 py-1.5 text-sm rounded-lg border border-outline-variant disabled:opacity-40">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="user-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div id="user-modal-backdrop" class="absolute inset-0 bg-black/40"></div>
+    <div class="relative bg-surface border border-outline-variant rounded-2xl p-6 w-full max-w-md shadow-xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between">
+        <h3 id="modal-title" class="text-lg font-semibold text-on-surface">New teacher</h3>
+        <button type="button" id="btn-close-modal" class="p-1 rounded-full hover:bg-surface-container-high"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form id="user-form" class="space-y-3">
+        <input type="hidden" id="user_id"/>
+        <div>
+          <label class="text-sm text-on-surface-variant">Organization</label>
+          <select id="user_org" required class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low"></select>
+        </div>
+        <div>
+          <label class="text-sm text-on-surface-variant">Full name</label>
+          <input id="user_name" required class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low"/>
+        </div>
+        <div>
+          <label class="text-sm text-on-surface-variant">Email</label>
+          <input id="user_email" type="email" required class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low"/>
+        </div>
+        <div>
+          <label class="text-sm text-on-surface-variant">Phone</label>
+          <input id="user_phone" type="tel" required class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low"/>
+        </div>
+        <div>
+          <label class="text-sm text-on-surface-variant">Password</label>
+          <input id="user_password" type="password" minlength="6" class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low"/>
+          <p id="password-hint" class="text-xs text-on-surface-variant mt-1 hidden">Leave blank to keep current password.</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-sm text-on-surface-variant">Role</label>
+            <select id="user_role" class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low">
+              <option value="teacher">Teacher</option>
+              <option value="org_admin">Org admin</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-sm text-on-surface-variant">Status</label>
+            <select id="user_status" class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+        <p id="form-error" class="hidden text-sm text-error"></p>
+        <div class="flex gap-3 pt-1">
+          <button type="submit" class="flex-1 py-2.5 bg-primary-container text-on-primary-container rounded-lg text-sm font-medium">Save</button>
+          <button type="button" id="btn-cancel-modal" class="flex-1 py-2.5 border border-outline-variant rounded-lg text-sm">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</template>
+<script src="../js/seed.js"></script>
+<script src="../js/store.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/layout.js"></script>
+<script src="../js/admin-layout.js"></script>
+<script>
+  XplainAdminLayout.init({ active: "teachers", title: "Teachers" });
+
+  const PAGE_SIZE = 5;
+  let page = 1;
+  let query = "";
+  let orgFilter = new URLSearchParams(location.search).get("org") || "";
+  let editingId = null;
+
+  function fillOrgSelects() {
+    const orgs = XplainStore.getOrganizations().slice().sort((a, b) => a.name.localeCompare(b.name));
+    const filter = document.getElementById("filter-org");
+    const formSel = document.getElementById("user_org");
+    filter.innerHTML =
+      `<option value="">All organizations</option>` +
+      orgs.map((o) => `<option value="${o.id}">${XplainUI.escapeHtml(o.name)}</option>`).join("");
+    formSel.innerHTML =
+      `<option value="">Select organization…</option>` +
+      orgs.map((o) => `<option value="${o.id}">${XplainUI.escapeHtml(o.name)}</option>`).join("");
+    filter.value = orgFilter;
+  }
+
+  function filtered() {
+    const q = query.trim().toLowerCase();
+    let users = XplainStore.getAllUsers().slice();
+    if (orgFilter) users = users.filter((u) => u.organization_id === orgFilter);
+    if (q) {
+      users = users.filter(
+        (u) =>
+          (u.name || "").toLowerCase().includes(q) ||
+          (u.email || "").toLowerCase().includes(q) ||
+          (u.phone || "").toLowerCase().includes(q)
+      );
+    }
+    users.sort((a, b) => {
+      if (a.role === "org_admin" && b.role !== "org_admin") return -1;
+      if (b.role === "org_admin" && a.role !== "org_admin") return 1;
+      return a.name.localeCompare(b.name);
+    });
+    return users;
+  }
+
+  function render() {
+    const users = filtered();
+    const total = users.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    if (page > totalPages) page = totalPages;
+    const start = (page - 1) * PAGE_SIZE;
+    const slice = users.slice(start, start + PAGE_SIZE);
+    const list = document.getElementById("list");
+
+    if (!total) {
+      list.innerHTML = `<li class="py-10 text-center text-sm text-on-surface-variant">${
+        query || orgFilter ? "No teachers match your filters." : "No teachers yet."
+      }</li>`;
+    } else {
+      list.innerHTML = slice
+        .map((u) => {
+          const org = XplainStore.getOrganization(u.organization_id);
+          const isAdmin = u.role === "org_admin";
+          const inactive = u.status === "inactive";
+          return `
+        <li class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+          isAdmin ? "bg-primary-container/5" : ""
+        }">
+          <div class="min-w-0">
+            <p class="font-medium text-on-surface truncate">
+              ${XplainUI.escapeHtml(u.name)}
+              ${
+                isAdmin
+                  ? `<span class="ml-2 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-primary-container text-on-primary-container">Admin</span>`
+                  : ""
+              }
+              ${
+                inactive
+                  ? `<span class="ml-1 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full bg-surface-variant text-on-surface-variant">Inactive</span>`
+                  : ""
+              }
+            </p>
+            <p class="text-sm text-on-surface-variant truncate">${XplainUI.escapeHtml(u.email)} · ${XplainUI.escapeHtml(u.phone || "—")}</p>
+            <p class="text-xs text-on-surface-variant mt-0.5">${XplainUI.escapeHtml(org?.name || "—")}</p>
+          </div>
+          <div class="flex flex-wrap gap-2 shrink-0">
+            <button type="button" data-action="edit" data-id="${u.id}" class="text-xs px-3 py-1.5 rounded-lg border border-outline-variant hover:bg-surface-container-low">Edit</button>
+            <button type="button" data-action="toggle" data-id="${u.id}" class="text-xs px-3 py-1.5 rounded-lg border border-outline-variant hover:bg-surface-container-low">${inactive ? "Activate" : "Inactive"}</button>
+            <button type="button" data-action="reset" data-id="${u.id}" class="text-xs px-3 py-1.5 rounded-lg border border-outline-variant hover:bg-surface-container-low">Reset PW</button>
+            <button type="button" data-action="delete" data-id="${u.id}" class="text-xs px-3 py-1.5 rounded-lg border border-error/40 text-error hover:bg-error-container/30">Delete</button>
+          </div>
+        </li>`;
+        })
+        .join("");
+    }
+
+    const from = total ? start + 1 : 0;
+    const to = Math.min(start + PAGE_SIZE, total);
+    document.getElementById("page-info").textContent = total ? `Showing ${from}–${to} of ${total}` : "0 teachers";
+    document.getElementById("page-num").textContent = `Page ${page} / ${totalPages}`;
+    document.getElementById("btn-prev").disabled = page <= 1;
+    document.getElementById("btn-next").disabled = page >= totalPages || total === 0;
+
+    list.querySelectorAll("[data-action]").forEach((btn) => {
+      btn.addEventListener("click", () => handleAction(btn.dataset.action, btn.dataset.id));
+    });
+  }
+
+  async function handleAction(action, id) {
+    const user = XplainStore.getUser(id);
+    if (!user) return;
+    if (action === "edit") {
+      openModal(id);
+      return;
+    }
+    if (action === "delete") {
+      const ok = await XplainUI.confirmDialog({
+        title: "Delete teacher?",
+        message: `Delete ${user.name} (${user.email})? This cannot be undone.`,
+        confirmLabel: "Delete",
+        cancelLabel: "Cancel",
+        danger: true,
+      });
+      if (!ok) return;
+      XplainStore.deleteUser(id);
+      XplainUI.toast("Teacher deleted", user.email, { icon: "delete" });
+    } else if (action === "toggle") {
+      const next = user.status === "inactive" ? "active" : "inactive";
+      const ok = await XplainUI.confirmDialog({
+        title: next === "inactive" ? "Deactivate teacher?" : "Activate teacher?",
+        message: `${next === "inactive" ? "Deactivate" : "Activate"} ${user.name}?`,
+        confirmLabel: next === "inactive" ? "Deactivate" : "Activate",
+        cancelLabel: "Cancel",
+        danger: next === "inactive",
+      });
+      if (!ok) return;
+      XplainStore.setUserStatus(id, next);
+      XplainUI.toast(next === "inactive" ? "Deactivated" : "Activated", user.email, { icon: "check" });
+    } else if (action === "reset") {
+      const ok = await XplainUI.confirmDialog({
+        title: "Reset password?",
+        message: `Reset password for ${user.name} to “reset123”?`,
+        confirmLabel: "Reset",
+        cancelLabel: "Cancel",
+        danger: true,
+      });
+      if (!ok) return;
+      const pw = XplainStore.resetUserPassword(id, "reset123");
+      XplainUI.toast("Password reset", `New password: ${pw}`, { icon: "key" });
+    }
+    render();
+  }
+
+  function openModal(id) {
+    editingId = id || null;
+    document.getElementById("form-error").classList.add("hidden");
+    document.getElementById("user-form").reset();
+    fillOrgSelects();
+    document.getElementById("filter-org").value = orgFilter;
+    const pw = document.getElementById("user_password");
+    const hint = document.getElementById("password-hint");
+    if (editingId) {
+      const u = XplainStore.getUser(editingId);
+      if (!u) return;
+      document.getElementById("modal-title").textContent = "Edit teacher";
+      document.getElementById("user_id").value = u.id;
+      document.getElementById("user_org").value = u.organization_id;
+      document.getElementById("user_name").value = u.name;
+      document.getElementById("user_email").value = u.email;
+      document.getElementById("user_phone").value = u.phone || "";
+      document.getElementById("user_role").value = u.role;
+      document.getElementById("user_status").value = u.status || "active";
+      pw.required = false;
+      pw.value = "";
+      hint.classList.remove("hidden");
+    } else {
+      document.getElementById("modal-title").textContent = "New teacher";
+      document.getElementById("user_id").value = "";
+      if (orgFilter) document.getElementById("user_org").value = orgFilter;
+      document.getElementById("user_role").value = "teacher";
+      document.getElementById("user_status").value = "active";
+      pw.required = true;
+      hint.classList.add("hidden");
+    }
+    document.getElementById("user-modal").classList.remove("hidden");
+  }
+
+  function closeModal() {
+    document.getElementById("user-modal").classList.add("hidden");
+    editingId = null;
+  }
+
+  document.getElementById("search").addEventListener("input", (e) => {
+    query = e.target.value;
+    page = 1;
+    render();
+  });
+  document.getElementById("filter-org").addEventListener("change", (e) => {
+    orgFilter = e.target.value;
+    page = 1;
+    const url = new URL(location.href);
+    if (orgFilter) url.searchParams.set("org", orgFilter);
+    else url.searchParams.delete("org");
+    history.replaceState(null, "", url);
+    render();
+  });
+  document.getElementById("btn-prev").addEventListener("click", () => {
+    page -= 1;
+    render();
+  });
+  document.getElementById("btn-next").addEventListener("click", () => {
+    page += 1;
+    render();
+  });
+  document.getElementById("btn-add").addEventListener("click", () => openModal(null));
+  document.getElementById("btn-close-modal").addEventListener("click", closeModal);
+  document.getElementById("btn-cancel-modal").addEventListener("click", closeModal);
+  document.getElementById("user-modal-backdrop").addEventListener("click", closeModal);
+
+  document.getElementById("user-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const err = document.getElementById("form-error");
+    err.classList.add("hidden");
+    const payload = {
+      organization_id: document.getElementById("user_org").value,
+      name: document.getElementById("user_name").value,
+      email: document.getElementById("user_email").value,
+      phone: document.getElementById("user_phone").value,
+      role: document.getElementById("user_role").value,
+      status: document.getElementById("user_status").value,
+      password: document.getElementById("user_password").value,
+    };
+    let result;
+    if (editingId) {
+      const fields = { ...payload };
+      if (!fields.password) delete fields.password;
+      result = XplainStore.updatePlatformUser(editingId, fields);
+    } else {
+      result = XplainStore.createUserForOrg(payload);
+      if (result.ok && payload.status === "inactive") {
+        XplainStore.setUserStatus(result.user.id, "inactive");
+      }
+    }
+    if (!result.ok) {
+      err.textContent = result.error;
+      err.classList.remove("hidden");
+      return;
+    }
+    const wasEdit = !!editingId;
+    closeModal();
+    XplainUI.toast(wasEdit ? "Teacher updated" : "Teacher created", result.user.email, {
+      icon: "check",
+    });
+    render();
+  });
+
+  fillOrgSelects();
+  render();
+</script>
+</body>
+</html>

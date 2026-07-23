@@ -289,11 +289,17 @@
       })
     );
     document.querySelectorAll(".delete-btn").forEach((b) =>
-      b.addEventListener("click", () => {
-        if (confirm("Delete this resource? (mock purge)")) {
-          XplainStore.deleteMedia(b.dataset.id);
-          render();
-        }
+      b.addEventListener("click", async () => {
+        const ok = await XplainUI.confirmDialog({
+          title: "Delete resource?",
+          message: "This will purge the mock media item.",
+          confirmLabel: "Delete",
+          cancelLabel: "Cancel",
+          danger: true,
+        });
+        if (!ok) return;
+        XplainStore.deleteMedia(b.dataset.id);
+        render();
       })
     );
     document.querySelectorAll(".reindex-btn").forEach((b) =>
