@@ -1,5 +1,5 @@
 window.XplainSeed = {
-  version: 9,
+  version: 10,
   organizations: [
     {
       id: "org-gvi",
@@ -142,6 +142,37 @@ window.XplainSeed = {
       email: "admin@getxplain.ai",
       password: "admin123",
     },
+  ],
+  grades: [
+    { id: "g-6", name: "Grade 6" },
+    { id: "g-7", name: "Grade 7" },
+    { id: "g-8", name: "Grade 8" },
+    { id: "g-9", name: "Grade 9" },
+    { id: "g-10", name: "Grade 10" },
+    { id: "g-11", name: "Grade 11" },
+    { id: "g-12", name: "Grade 12" },
+  ],
+  curriculums: [
+    { id: "cur-british", name: "British" },
+    { id: "cur-american", name: "American" },
+    { id: "cur-ib", name: "IB Diploma" },
+    { id: "cur-national", name: "National" },
+  ],
+  backgrounds: [
+    { id: "bg-simple-white", name: "Simple white" },
+    { id: "bg-soft", name: "Soft color" },
+    { id: "bg-pattern", name: "Pattern" },
+    { id: "bg-solid", name: "Solid color" },
+  ],
+  image_styles: [
+    { id: "is-realistic", name: "Realistic" },
+    { id: "is-cartoon", name: "Cartoon" },
+    { id: "is-diagram", name: "Diagrams" },
+  ],
+  fonts: [
+    { id: "fnt-nunito", name: "Nunito", url: "https://fonts.google.com/specimen/Nunito" },
+    { id: "fnt-space", name: "Space Grotesk", url: "https://fonts.google.com/specimen/Space+Grotesk" },
+    { id: "fnt-roboto", name: "Roboto", url: "https://fonts.google.com/specimen/Roboto" },
   ],
   session: null,
   // Compat mirror — synced from logged-in user + org by the store

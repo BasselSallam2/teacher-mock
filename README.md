@@ -84,10 +84,11 @@ Pages: `admin/dashboard.html`, `admin/organizations.html`, `admin/teachers.html`
 | `admin/dashboard.html` | Platform stats overview |
 | `admin/organizations.html` | Org CRUD + search/pagination |
 | `admin/teachers.html` | Teacher CRUD + search/pagination |
+| `admin/catalogs.html` | Grades, curriculums, backgrounds, image styles, fonts |
 
 ## Happy path (full chat cycle)
 
-1. Hard-refresh (store **v9**) or Settings → Reset demo data, then log in again
+1. Hard-refresh (store **v10**) or Settings → Reset demo data, then log in again
 2. Home → type `Build a lesson about AI for Grade 8` → Create New Lesson  
    (or open **New Lesson** and type it in chat)
 3. Pick **source(s)** from the buttons (e.g. Intro_to_AI_Unit.pdf)

@@ -107,6 +107,11 @@
         organizations: deepClone(XplainSeed.organizations),
         users: deepClone(XplainSeed.users),
         platformAdmins: deepClone(XplainSeed.platformAdmins),
+        grades: deepClone(XplainSeed.grades || []),
+        curriculums: deepClone(XplainSeed.curriculums || []),
+        backgrounds: deepClone(XplainSeed.backgrounds || []),
+        image_styles: deepClone(XplainSeed.image_styles || []),
+        fonts: deepClone(XplainSeed.fonts || []),
         session: null,
         teacher: deepClone(XplainSeed.teacher),
         identities: deepClone(XplainSeed.identities),
@@ -124,10 +129,17 @@
     if (!state.organizations) state.organizations = deepClone(XplainSeed.organizations);
     if (!state.users) state.users = deepClone(XplainSeed.users);
     if (!state.platformAdmins) state.platformAdmins = deepClone(XplainSeed.platformAdmins);
+    if (!state.grades) state.grades = deepClone(XplainSeed.grades || []);
+    if (!state.curriculums) state.curriculums = deepClone(XplainSeed.curriculums || []);
+    if (!state.backgrounds) state.backgrounds = deepClone(XplainSeed.backgrounds || []);
+    if (!state.image_styles) state.image_styles = deepClone(XplainSeed.image_styles || []);
+    if (!state.fonts) state.fonts = deepClone(XplainSeed.fonts || []);
     if (state.session === undefined) state.session = null;
     syncTeacherMirror(state);
     return state;
   }
+
+  const CATALOG_KEYS = ["grades", "curriculums", "backgrounds", "image_styles", "fonts"];
 
   const Store = {
     get() {
@@ -647,7 +659,77 @@
         files: media.length,
         fileSizeBytes: media.reduce((sum, m) => sum + (m.size_bytes || 0), 0),
         organizations: orgs.length,
+        grades: (ensure().grades || []).length,
+        curriculums: (ensure().curriculums || []).length,
+        backgrounds: (ensure().backgrounds || []).length,
+        image_styles: (ensure().image_styles || []).length,
+        fonts: (ensure().fonts || []).length,
       };
+    },
+
+    // —— Catalog droplists (grades, curriculums, backgrounds, image_styles, fonts) ——
+    catalogKeys: CATALOG_KEYS,
+    getCatalog(key) {
+      if (!CATALOG_KEYS.includes(key)) return [];
+      return (ensure()[key] || []).slice().sort((a, b) => a.name.localeCompare(b.name));
+    },
+    getCatalogItem(key, id) {
+      return this.getCatalog(key).find((x) => x.id === id) || null;
+    },
+    createCatalogItem(key, data) {
+      if (!CATALOG_KEYS.includes(key)) return { ok: false, error: "Unknown catalog" };
+      const name = (data.name || "").trim();
+      if (!name) return { ok: false, error: "Name is required" };
+      const existing = (ensure()[key] || []).find(
+        (x) => x.name.toLowerCase() === name.toLowerCase()
+      );
+      if (existing) return { ok: false, error: "Name already exists" };
+      const item = {
+        id: uid(key.slice(0, 3)),
+        name,
+      };
+      if (key === "fonts") {
+        const url = (data.url || "").trim();
+        if (!url) return { ok: false, error: "Font URL is required" };
+        item.url = url;
+      }
+      this.patch((s) => {
+        if (!s[key]) s[key] = [];
+        s[key].push(item);
+      });
+      return { ok: true, item };
+    },
+    updateCatalogItem(key, id, data) {
+      if (!CATALOG_KEYS.includes(key)) return { ok: false, error: "Unknown catalog" };
+      const item = (ensure()[key] || []).find((x) => x.id === id);
+      if (!item) return { ok: false, error: "Item not found" };
+      const name = data.name != null ? String(data.name).trim() : item.name;
+      if (!name) return { ok: false, error: "Name is required" };
+      const clash = (ensure()[key] || []).find(
+        (x) => x.id !== id && x.name.toLowerCase() === name.toLowerCase()
+      );
+      if (clash) return { ok: false, error: "Name already exists" };
+      let url = item.url;
+      if (key === "fonts") {
+        url = data.url != null ? String(data.url).trim() : item.url;
+        if (!url) return { ok: false, error: "Font URL is required" };
+      }
+      this.patch((s) => {
+        const row = (s[key] || []).find((x) => x.id === id);
+        if (!row) return;
+        row.name = name;
+        if (key === "fonts") row.url = url;
+      });
+      return { ok: true, item: this.getCatalogItem(key, id) };
+    },
+    deleteCatalogItem(key, id) {
+      if (!CATALOG_KEYS.includes(key)) return { ok: false, error: "Unknown catalog" };
+      const item = (ensure()[key] || []).find((x) => x.id === id);
+      if (!item) return { ok: false, error: "Item not found" };
+      this.patch((s) => {
+        s[key] = (s[key] || []).filter((x) => x.id !== id);
+      });
+      return { ok: true };
     },
 
     getTeacher() {

@@ -39,6 +39,27 @@
         <span class="material-symbols-outlined">group</span>
         <span>Teachers</span>
       </a>
+      <p class="px-4 pt-4 pb-1 text-[10px] uppercase tracking-wider text-on-surface-variant/70">Catalogs</p>
+      <a class="${navClass(active === "grades")}" href="catalogs.html?type=grades">
+        <span class="material-symbols-outlined">school</span>
+        <span>Grades</span>
+      </a>
+      <a class="${navClass(active === "curriculums")}" href="catalogs.html?type=curriculums">
+        <span class="material-symbols-outlined">menu_book</span>
+        <span>Curriculums</span>
+      </a>
+      <a class="${navClass(active === "backgrounds")}" href="catalogs.html?type=backgrounds">
+        <span class="material-symbols-outlined">wallpaper</span>
+        <span>Backgrounds</span>
+      </a>
+      <a class="${navClass(active === "image_styles")}" href="catalogs.html?type=image_styles">
+        <span class="material-symbols-outlined">palette</span>
+        <span>Image styles</span>
+      </a>
+      <a class="${navClass(active === "fonts")}" href="catalogs.html?type=fonts">
+        <span class="material-symbols-outlined">font_download</span>
+        <span>Fonts</span>
+      </a>
     </nav>
     <div class="mt-auto px-2 pb-4 space-y-1 border-t border-outline-variant/30 pt-4">
       <a class="flex items-center gap-3 px-4 py-3 text-on-surface-variant hover:bg-surface-container-high rounded-lg text-sm" href="../login.html">

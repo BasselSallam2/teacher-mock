@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Catalogs — Platform Admin</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="../css/app.css"/>
+</head>
+<body>
+<div id="admin-shell"></div>
+<template id="page-template">
+  <div class="max-w-5xl space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <p class="text-on-surface-variant" id="catalog-desc">Dropdown catalogs used by classes and identities.</p>
+      <button type="button" id="btn-add" class="shrink-0 px-4 py-2 bg-primary-container text-on-primary-container rounded-lg text-sm font-medium flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-sm">add</span>
+        <span id="btn-add-label">Add</span>
+      </button>
+    </div>
+
+    <div class="flex flex-wrap gap-2" id="type-tabs"></div>
+
+    <div class="relative">
+      <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
+      <input id="search" type="search" placeholder="Search by name…"
+        class="w-full rounded-lg border-outline-variant bg-surface pl-10 pr-4 py-2.5 text-sm focus:border-primary focus:ring-primary"/>
+    </div>
+
+    <ul id="list" class="bg-surface border border-outline-variant rounded-xl divide-y divide-outline-variant/40 overflow-hidden"></ul>
+
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+      <p id="page-info" class="text-sm text-on-surface-variant"></p>
+      <div class="flex items-center gap-2">
+        <button type="button" id="btn-prev" class="px-3 py-1.5 text-sm rounded-lg border border-outline-variant disabled:opacity-40">Previous</button>
+        <span id="page-num" class="text-sm text-on-surface-variant tabular-nums"></span>
+        <button type="button" id="btn-next" class="px-3 py-1.5 text-sm rounded-lg border border-outline-variant disabled:opacity-40">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="item-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div id="item-modal-backdrop" class="absolute inset-0 bg-black/40"></div>
+    <div class="relative bg-surface border border-outline-variant rounded-2xl p-6 w-full max-w-md shadow-xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 id="modal-title" class="text-lg font-semibold text-on-surface">Add item</h3>
+        <button type="button" id="btn-close-modal" class="p-1 rounded-full hover:bg-surface-container-high"><span class="material-symbols-outlined">close</span></button>
+      </div>
+      <form id="item-form" class="space-y-3">
+        <input type="hidden" id="item_id"/>
+        <div>
+          <label class="text-sm text-on-surface-variant" for="item_name">Name</label>
+          <input id="item_name" required class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low"/>
+        </div>
+        <div id="url-field" class="hidden">
+          <label class="text-sm text-on-surface-variant" for="item_url">Font URL</label>
+          <input id="item_url" type="url" placeholder="https://fonts.google.com/..." class="mt-1 w-full rounded-lg border-outline-variant bg-surface-container-low"/>
+        </div>
+        <p id="form-error" class="hidden text-sm text-error"></p>
+        <div class="flex gap-3 pt-1">
+          <button type="submit" class="flex-1 py-2.5 bg-primary-container text-on-primary-container rounded-lg text-sm font-medium">Save</button>
+          <button type="button" id="btn-cancel-modal" class="flex-1 py-2.5 border border-outline-variant rounded-lg text-sm">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</template>
+<script src="../js/seed.js"></script>
+<script src="../js/store.js"></script>
+<script src="../js/ui.js"></script>
+<script src="../js/layout.js"></script>
+<script src="../js/admin-layout.js"></script>
+<script>
+  const TYPES = {
+    grades: { label: "Grades", singular: "grade", desc: "Grade levels for class dropdowns (no FK linking)." },
+    curriculums: { label: "Curriculums", singular: "curriculum", desc: "Curriculum options for class dropdowns (no FK linking)." },
+    backgrounds: { label: "Backgrounds", singular: "background", desc: "Background options for identity dropdowns." },
+    image_styles: { label: "Image styles", singular: "image style", desc: "Image style options for identity dropdowns." },
+    fonts: { label: "Fonts", singular: "font", desc: "Typography fonts (name + URL). Identities reference fonts by id." },
+  };
+
+  const params = new URLSearchParams(location.search);
+  let catalogType = params.get("type") || "grades";
+  if (!TYPES[catalogType]) catalogType = "grades";
+
+  const meta = TYPES[catalogType];
+  XplainAdminLayout.init({ active: catalogType, title: meta.label });
+
+  document.getElementById("catalog-desc").textContent = meta.desc;
+  document.getElementById("btn-add-label").textContent = "Add " + meta.singular;
+  document.title = meta.label + " — Platform Admin";
+
+  const PAGE_SIZE = 8;
+  let page = 1;
+  let query = "";
+  let editingId = null;
+
+  function renderTabs() {
+    document.getElementById("type-tabs").innerHTML = Object.entries(TYPES)
+      .map(
+        ([key, t]) => `
+      <a href="catalogs.html?type=${key}" class="px-3 py-1.5 rounded-lg text-sm border ${
+        key === catalogType
+          ? "bg-primary-container text-on-primary-container border-transparent"
+          : "border-outline-variant text-on-surface-variant hover:bg-surface-container-low"
+      }">${t.label}</a>`
+      )
+      .join("");
+  }
+
+  function filtered() {
+    const q = query.trim().toLowerCase();
+    let items = XplainStore.getCatalog(catalogType);
+    if (q) {
+      items = items.filter(
+        (x) =>
+          (x.name || "").toLowerCase().includes(q) ||
+          (x.url || "").toLowerCase().includes(q)
+      );
+    }
+    return items;
+  }
+
+  function render() {
+    const items = filtered();
+    const total = items.length;
+    const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    if (page > totalPages) page = totalPages;
+    const start = (page - 1) * PAGE_SIZE;
+    const slice = items.slice(start, start + PAGE_SIZE);
+    const list = document.getElementById("list");
+
+    if (!total) {
+      list.innerHTML = `<li class="py-10 text-center text-sm text-on-surface-variant">${
+        query ? "No matches." : "No items yet. Add one to get started."
+      }</li>`;
+    } else {
+      list.innerHTML = slice
+        .map((item) => {
+          const urlLine =
+            catalogType === "fonts" && item.url
+              ? `<p class="text-xs text-on-surface-variant truncate mt-0.5"><a href="${XplainUI.escapeHtml(item.url)}" target="_blank" rel="noopener" class="text-primary hover:underline">${XplainUI.escapeHtml(item.url)}</a></p>`
+              : "";
+          return `
+        <li class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="min-w-0">
+            <p class="font-medium text-on-surface truncate">${XplainUI.escapeHtml(item.name)}</p>
+            ${urlLine}
+            <p class="text-[10px] text-on-surface-variant/70 mt-1 font-mono">${XplainUI.escapeHtml(item.id)}</p>
+          </div>
+          <div class="flex gap-2 shrink-0">
+            <button type="button" data-action="edit" data-id="${item.id}" class="text-xs px-3 py-1.5 rounded-lg border border-outline-variant hover:bg-surface-container-low">Edit</button>
+            <button type="button" data-action="delete" data-id="${item.id}" class="text-xs px-3 py-1.5 rounded-lg border border-error/40 text-error hover:bg-error-container/30">Delete</button>
+          </div>
+        </li>`;
+        })
+        .join("");
+    }
+
+    const from = total ? start + 1 : 0;
+    const to = Math.min(start + PAGE_SIZE, total);
+    document.getElementById("page-info").textContent = total ? `Showing ${from}–${to} of ${total}` : "0 items";
+    document.getElementById("page-num").textContent = `Page ${page} / ${totalPages}`;
+    document.getElementById("btn-prev").disabled = page <= 1;
+    document.getElementById("btn-next").disabled = page >= totalPages || total === 0;
+
+    list.querySelectorAll("[data-action]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (btn.dataset.action === "edit") openModal(btn.dataset.id);
+        else if (btn.dataset.action === "delete") await removeItem(btn.dataset.id);
+      });
+    });
+  }
+
+  function openModal(id) {
+    editingId = id || null;
+    document.getElementById("form-error").classList.add("hidden");
+    document.getElementById("item-form").reset();
+    const urlField = document.getElementById("url-field");
+    const urlInput = document.getElementById("item_url");
+    if (catalogType === "fonts") {
+      urlField.classList.remove("hidden");
+      urlInput.required = true;
+    } else {
+      urlField.classList.add("hidden");
+      urlInput.required = false;
+    }
+    if (editingId) {
+      const item = XplainStore.getCatalogItem(catalogType, editingId);
+      if (!item) return;
+      document.getElementById("modal-title").textContent = "Edit " + meta.singular;
+      document.getElementById("item_id").value = item.id;
+      document.getElementById("item_name").value = item.name;
+      if (catalogType === "fonts") urlInput.value = item.url || "";
+    } else {
+      document.getElementById("modal-title").textContent = "Add " + meta.singular;
+      document.getElementById("item_id").value = "";
+    }
+    document.getElementById("item-modal").classList.remove("hidden");
+  }
+
+  function closeModal() {
+    document.getElementById("item-modal").classList.add("hidden");
+    editingId = null;
+  }
+
+  async function removeItem(id) {
+    const item = XplainStore.getCatalogItem(catalogType, id);
+    if (!item) return;
+    const ok = await XplainUI.confirmDialog({
+      title: "Delete " + meta.singular + "?",
+      message: `Delete “${item.name}”? Classes/identities that stored this as a plain string are not updated.`,
+      confirmLabel: "Delete",
+      cancelLabel: "Cancel",
+      danger: true,
+    });
+    if (!ok) return;
+    const result = XplainStore.deleteCatalogItem(catalogType, id);
+    if (!result.ok) {
+      XplainUI.toast("Could not delete", result.error, { icon: "error" });
+      return;
+    }
+    XplainUI.toast("Deleted", item.name, { icon: "delete" });
+    render();
+  }
+
+  document.getElementById("search").addEventListener("input", (e) => {
+    query = e.target.value;
+    page = 1;
+    render();
+  });
+  document.getElementById("btn-prev").addEventListener("click", () => {
+    page -= 1;
+    render();
+  });
+  document.getElementById("btn-next").addEventListener("click", () => {
+    page += 1;
+    render();
+  });
+  document.getElementById("btn-add").addEventListener("click", () => openModal(null));
+  document.getElementById("btn-close-modal").addEventListener("click", closeModal);
+  document.getElementById("btn-cancel-modal").addEventListener("click", closeModal);
+  document.getElementById("item-modal-backdrop").addEventListener("click", closeModal);
+
+  document.getElementById("item-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const err = document.getElementById("form-error");
+    err.classList.add("hidden");
+    const payload = {
+      name: document.getElementById("item_name").value,
+      url: document.getElementById("item_url").value,
+    };
+    const result = editingId
+      ? XplainStore.updateCatalogItem(catalogType, editingId, payload)
+      : XplainStore.createCatalogItem(catalogType, payload);
+    if (!result.ok) {
+      err.textContent = result.error;
+      err.classList.remove("hidden");
+      return;
+    }
+    const wasEdit = !!editingId;
+    closeModal();
+    XplainUI.toast(wasEdit ? "Updated" : "Created", result.item.name, { icon: "check" });
+    render();
+  });
+
+  renderTabs();
+  render();
+</script>
+</body>
+</html>
