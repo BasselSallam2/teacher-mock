@@ -75,6 +75,7 @@ flowchart TB
 | [04-database.md](04-database.md) | Postgres ER |
 | [05-queue-and-sequence.md](05-queue-and-sequence.md) | arq jobs only |
 | [06-chat-service.md](06-chat-service.md) | **WebSocket chat microservice** |
+| [07-lesson-json-schema.md](07-lesson-json-schema.md) | **Full Hetzner lesson.json schema** |
 
 ## Design rules
 

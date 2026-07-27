@@ -123,9 +123,6 @@ erDiagram
     string topic
     string duration
     string_array learning_styles
-    boolean pair_work
-    boolean group_work
-    string assessment
     string language
     string grade_hint
     json extra
@@ -189,11 +186,12 @@ flowchart LR
 flowchart TB
   Messages["lesson_messages\nfull transcript"] --> ChatUX["Replay chat UI"]
   Prefs["lesson_preferences\nstructured answers"] --> Planner["planner_worker input"]
-  Prefs --> LessonJSON["Copied into lesson.json"]
+  Prefs --> Design["Feeds plan.global_design_style\n(not copied as root JSON fields)"]
 ```
 
 - **Messages** = conversational history (audit + UI).
-- **Preferences** = normalized selections (pair_work, assessment, identity_id, …) used by planner/executer without re-parsing chat.
+- **Preferences** = normalized selections (title, duration, grade, identity_id, …) used by planner/executer from DB — **not** stored as root fields in lesson JSON.
+- **Page activity types** (`explain` | `assessment` | `group_work` | `pair_work` + `details`) live in the lesson plan JSON, not as preference booleans.
 
 ## Dropdown-only catalogs
 

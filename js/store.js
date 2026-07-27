@@ -135,8 +135,52 @@
     if (!state.image_styles) state.image_styles = deepClone(XplainSeed.image_styles || []);
     if (!state.fonts) state.fonts = deepClone(XplainSeed.fonts || []);
     if (state.session === undefined) state.session = null;
+    migrateMediaFolders(state);
     syncTeacherMirror(state);
     return state;
+  }
+
+  /** Nested folders + remove legacy Images folder. */
+  function migrateMediaFolders(state) {
+    if (!state.folders) state.folders = [];
+    if (!state.media) state.media = [];
+    let changed = false;
+
+    const imagesIds = new Set(
+      state.folders
+        .filter(
+          (f) =>
+            f.id === "f-images" ||
+            f.name === "Images" ||
+            f.kind === "images"
+        )
+        .map((f) => f.id)
+    );
+
+    if (imagesIds.size) {
+      state.media.forEach((m) => {
+        if (imagesIds.has(m.folder_id)) {
+          m.folder_id = "f-general";
+          changed = true;
+        }
+      });
+      const before = state.folders.length;
+      state.folders = state.folders.filter((f) => !imagesIds.has(f.id));
+      if (state.folders.length !== before) changed = true;
+    }
+
+    state.folders.forEach((f) => {
+      if (f.parent_id === undefined) {
+        f.parent_id = null;
+        changed = true;
+      }
+      if (f.kind !== undefined) {
+        delete f.kind;
+        changed = true;
+      }
+    });
+
+    if (changed) save(state);
   }
 
   const CATALOG_KEYS = ["grades", "curriculums", "backgrounds", "image_styles", "fonts"];
@@ -843,48 +887,82 @@
       return ensure().media.find((m) => m.id === id);
     },
     getFolders() {
-      this.ensureImagesFolder();
       return ensure().folders;
     },
-    ensureImagesFolder() {
-      const s = ensure();
-      if (!s.folders) s.folders = [];
-      if (!s.folders.some((f) => f.id === "f-images")) {
-        this.patch((st) => {
-          st.folders.unshift({
-            id: "f-images",
-            name: "Images",
-            kind: "images",
-            updated_at: new Date().toISOString(),
-          });
-        });
-      }
+    getFolder(id) {
+      return ensure().folders.find((f) => f.id === id) || null;
     },
-    isImagesFolder(folderId) {
-      if (folderId === "f-images") return true;
-      const f = this.getFolders().find((x) => x.id === folderId);
-      return f?.kind === "images" || f?.name === "Images";
+    getChildFolders(parentId) {
+      const pid = parentId == null ? null : parentId;
+      return this.getFolders()
+        .filter((f) => (f.parent_id == null ? null : f.parent_id) === pid)
+        .sort((a, b) => a.name.localeCompare(b.name));
+    },
+    getFolderPath(folderId) {
+      const path = [];
+      let id = folderId;
+      const seen = new Set();
+      while (id) {
+        if (seen.has(id)) break;
+        seen.add(id);
+        const f = this.getFolder(id);
+        if (!f) break;
+        path.unshift(f);
+        id = f.parent_id;
+      }
+      return path;
     },
     addFolder(data) {
       const folder = {
         id: uid("f"),
         name: (data.name || "New Folder").trim() || "New Folder",
+        parent_id: data.parent_id == null ? null : data.parent_id,
         updated_at: new Date().toISOString(),
       };
       this.patch((s) => {
         if (!s.folders) s.folders = [];
-        // Keep Images folder first
-        const images = s.folders.filter((f) => f.id === "f-images");
-        const rest = s.folders.filter((f) => f.id !== "f-images");
-        s.folders = [...images, folder, ...rest];
+        s.folders.push(folder);
       });
       return folder;
+    },
+    renameFolder(id, name) {
+      const trimmed = (name || "").trim();
+      if (!trimmed) return false;
+      this.patch((s) => {
+        const f = s.folders.find((x) => x.id === id);
+        if (f) {
+          f.name = trimmed;
+          f.updated_at = new Date().toISOString();
+        }
+      });
+      return true;
+    },
+    /**
+     * Refuse delete if folder has child folders or media.
+     * @returns {{ ok: boolean, reason?: string }}
+     */
+    deleteFolder(id) {
+      const children = this.getChildFolders(id);
+      if (children.length) {
+        return { ok: false, reason: "Folder has subfolders. Remove them first." };
+      }
+      const mediaCount = this.getMedia().filter((m) => m.folder_id === id).length;
+      if (mediaCount) {
+        return {
+          ok: false,
+          reason: "Folder has files. Delete or move them first.",
+        };
+      }
+      this.patch((s) => {
+        s.folders = s.folders.filter((f) => f.id !== id);
+      });
+      return { ok: true };
     },
     addMedia(item) {
       const m = {
         id: uid("m"),
         status: "uploading",
-        folder_id: "f-general",
+        folder_id: item.folder_id,
         uploaded_by: ensure().teacher.display_name,
         description: "",
         created_at: new Date().toISOString(),

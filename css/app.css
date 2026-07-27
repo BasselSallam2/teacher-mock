@@ -448,3 +448,7 @@ h1, h2, h3, h4, .font-headline-xl, .font-headline-lg, .font-headline-md, .font-h
 .lesson-section.selected .pencil-btn .material-symbols-outlined {
   font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
 }
+/* Drive-style Media Library */
+.drive-actions {
+  margin-left: auto;
+}

@@ -45,7 +45,6 @@
   }
 
   const MediaSim = {
-    IMAGES_FOLDER_ID: "f-images",
     isImageFile,
     isImageName,
 
@@ -56,18 +55,10 @@
           : fileOrName?.name || "Untitled.pdf";
       const mime = guessMime(fileOrName);
       const asImage = isImageFile(fileOrName, mime);
-      const folderId = opts.folder_id || (asImage ? "f-images" : "f-general");
-      const imagesOnly = folderId === "f-images" || opts.images_only;
+      const folderId = opts.folder_id;
 
-      if (imagesOnly && !asImage) {
-        XplainUI.toast("Images only", "This folder accepts PNG, JPG, GIF, or WebP.", {
-          icon: "image",
-        });
-        opts.onDone?.(null, "rejected");
-        return null;
-      }
-      if (!imagesOnly && asImage) {
-        XplainUI.toast("Use Images folder", "Upload photos to the Images folder.", {
+      if (!folderId) {
+        XplainUI.toast("Pick a folder", "Upload files inside a folder.", {
           icon: "folder",
         });
         opts.onDone?.(null, "rejected");
@@ -89,7 +80,7 @@
         mime_type: mime,
         size_bytes: size,
         status: "uploading",
-        folder_id: asImage ? "f-images" : folderId,
+        folder_id: folderId,
         data_url: dataUrl,
       });
 

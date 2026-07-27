@@ -105,7 +105,8 @@ sequenceDiagram
 ## Stored data (unchanged)
 
 - `lesson_messages` — full transcript  
-- `lesson_preferences` — pair_work, group_work, assessment, identity_id, media_ids, …  
+- `lesson_preferences` — title, duration, learning_styles, language, grade, identity_id, media_ids, …  
+- Page types (`explain` / `assessment` / `group_work` / `pair_work`) are decided by the **planner** in `pages[].plan`, not preference booleans. 
 
 See [04-database.md](04-database.md).
 

@@ -3,7 +3,7 @@
 ## Goal
 
 1. **planner_worker** — after chat confirms **make plan**, build the slide **PLAN** from stored media text + **lesson preferences**; accept plan edits until teacher approves execute.
-2. **executer_worker** — generate **HTML slides** and write **lesson JSON** (title, status, identity, preferences, slides) to Hetzner.
+2. **executer_worker** — generate **HTML slides** and write **lesson JSON** (title, status, media, plan, pages, lesson) to Hetzner.
 
 Chat itself is owned by [`chat_service`](06-chat-service.md) over **WebSockets** (not arq). Media describing is Phase 1 only ([02](02-media-describer-flow.md)).
 
@@ -102,8 +102,8 @@ stateDiagram-v2
 
 ```mermaid
 flowchart TB
-  Job([plan_lesson / revise_plan]) --> In["Inputs from DB:\npreferences pair_work group_work...\nmedia.description/summary\nidentity\nchat history optional"]
-  In --> Plan["PLAN: Global Design Style + Pages"]
+  Job([plan_lesson / revise_plan]) --> In["Inputs from DB:\npreferences (title duration grade…)\nmedia.description/summary\nidentity\nchat history optional"]
+  In --> Plan["PLAN: Global Design Style +\nPages with type + details"]
   Plan --> Store["Persist plan\nstatus = awaiting_execute_approval"]
 ```
 
@@ -120,41 +120,74 @@ flowchart TB
 
 ### `lesson.json` shape (bucket)
 
+Full schema + examples: **[07-lesson-json-schema.md](07-lesson-json-schema.md)**.
+
+Planner writes `plan` + each `pages[].plan` (`html` stays `null`).  
+Executer fills each `pages[].html` and sets page/root status to ready.
+
+Minimal shape:
+
 ```json
 {
-  "title": "Photosynthesis for Grade 8",
+  "id": "les_…",
+  "title": "…",
   "status": "slides_ready",
-  "identity": {
-    "id": "...",
-    "name": "...",
-    "primary_color": "#7B4DFF",
-    "secondary_color": "#F5A623",
-    "background": "simple_white",
-    "image_style": "realistic",
-    "typography": "...",
-    "instructions": "...",
-    "logo_url": "https://..."
+  "createdAt": "…",
+  "updatedAt": "…",
+  "createdBy": "…",
+  "classId": "…",
+  "error": null,
+  "media": [],
+  "plan": {
+    "version": 1,
+    "overview": "…",
+    "global_design_style": {
+      "identity": "…",
+      "primary_color": "#7B4DFF",
+      "secondary_color": "#F5A623",
+      "typography": { "name": "Nunito", "url": "…" },
+      "visual_style": "Realistic images",
+      "background": "Simple white",
+      "rules": "…"
+    }
   },
-  "preferences": {
-    "class_id": "...",
-    "media_ids": ["..."],
-    "topic": "...",
-    "duration": "45m",
-    "learning_styles": ["visual", "kinesthetic"],
-    "pair_work": true,
-    "group_work": false,
-    "assessment": "exit_ticket",
-    "language": "en",
-    "grade_hint": "Grade 8"
-  },
-  "plan": { },
-  "slides": [
-    { "index": 1, "title": "...", "html": "<section>...</section>" }
+  "pages": [
+    {
+      "id": "page_01",
+      "index": 1,
+      "title": "…",
+      "status": "planned",
+      "plan": {
+        "type": "explain",
+        "summary": "…",
+        "image_needed": true,
+        "image_prompt": "…",
+        "images_uploaded": false,
+        "uploaded_images_urls": [],
+        "content_blocks": [],
+        "details": {
+          "key_points": [],
+          "examples": [],
+          "misconceptions_to_address": []
+        }
+      }
+    }
+  ],
+  "lesson": [
+    {
+      "page_id": "page_01",
+      "index": 1,
+      "title": "…",
+      "status": "ready",
+      "html": "<section>…</section>"
+    }
   ]
 }
 ```
 
-`status` inside the JSON should track the same enum as `lessons.status` (updated as the lesson progresses; executer writes the final `slides_ready` artifact, earlier stages may write a partial JSON if desired).
+- **`pages[].plan.type`**: `explain` | `assessment` | `group_work` | `pair_work`  
+- **`pages[].plan.details`**: shape depends on `type` (questions for assessment, roles/task for group_work, etc.)  
+- **`lesson`**: HTML per page with status (executer), linked by `page_id`
 
 ## How API fires queues
 

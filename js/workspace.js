@@ -292,10 +292,8 @@
     },
 
     async addImageToTarget(sessionId, targetId, file) {
-      XplainStore.ensureImagesFolder();
       const item = await XplainMedia.simulateUpload(file, {
-        folder_id: "f-images",
-        images_only: true,
+        folder_id: "f-general",
       });
       if (!item) return null;
       await new Promise((r) => setTimeout(r, 700));

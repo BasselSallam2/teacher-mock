@@ -12,42 +12,52 @@
 <body>
 <div id="app-shell"></div>
 <template id="page-template">
-  <div class="flex-1 p-4 md:p-16 overflow-y-auto">
-    <div class="max-w-6xl mx-auto space-y-8">
-      <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h2 class="text-3xl font-semibold text-on-surface mb-2">Media Library</h2>
-          <p class="text-on-surface-variant">Manage and index your academic resources for AI processing.</p>
+  <div class="flex-1 flex flex-col min-h-0 overflow-hidden">
+    <div class="shrink-0 border-b border-outline-variant/40 bg-surface px-4 md:px-8 py-3 space-y-3">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <nav id="drive-breadcrumb" class="flex items-center gap-1 min-w-0 flex-1 text-sm overflow-x-auto" aria-label="Folder path"></nav>
+        <div class="flex items-center gap-2 shrink-0">
+          <p id="storage-compact" class="hidden sm:block text-xs text-on-surface-variant mr-1"></p>
+          <div class="relative">
+            <button type="button" id="btn-new" class="flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-full text-sm font-medium shadow-sm hover:opacity-95">
+              <span class="material-symbols-outlined text-[20px]">add</span> New
+            </button>
+            <div id="new-menu" class="hidden absolute right-0 top-full mt-1 z-20 w-52 bg-surface rounded-xl border border-outline-variant/40 shadow-lg py-1 overflow-hidden">
+              <button type="button" id="menu-new-folder" class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-surface-container-low">
+                <span class="material-symbols-outlined text-primary text-[20px]">create_new_folder</span> New folder
+              </button>
+              <button type="button" id="menu-upload" class="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left hover:bg-surface-container-low disabled:opacity-40 disabled:pointer-events-none">
+                <span class="material-symbols-outlined text-primary text-[20px]">upload_file</span> File upload
+              </button>
+            </div>
+          </div>
         </div>
-        <div class="flex items-center gap-3">
-          <select id="media-filter" class="px-4 py-2 border border-outline rounded-lg text-sm bg-surface">
-            <option value="all">All statuses</option>
-            <option value="indexed">Indexed</option>
-            <option value="processing">Processing</option>
-            <option value="failed">Failed</option>
-          </select>
-          <button id="btn-new-folder" class="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-lg text-sm shadow-sm">
-            <span class="material-symbols-outlined text-sm">create_new_folder</span> New Folder
+      </div>
+      <div class="flex flex-wrap items-center gap-2">
+        <div class="relative flex-1 min-w-[180px] max-w-md">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+          <input id="drive-search" type="search" placeholder="Search in current folder" class="w-full pl-10 pr-3 py-2 rounded-full bg-surface-container-low border-0 text-sm focus:ring-2 focus:ring-primary"/>
+        </div>
+        <select id="media-filter" class="px-3 py-2 border border-outline-variant/50 rounded-full text-sm bg-surface">
+          <option value="all">All statuses</option>
+          <option value="indexed">Indexed</option>
+          <option value="processing">Processing</option>
+          <option value="failed">Failed</option>
+          <option value="uploading">Uploading</option>
+        </select>
+        <div class="flex rounded-full border border-outline-variant/50 overflow-hidden">
+          <button type="button" id="view-list" class="px-2.5 py-1.5 text-on-surface-variant hover:bg-surface-container" title="List view">
+            <span class="material-symbols-outlined text-[20px]">view_list</span>
+          </button>
+          <button type="button" id="view-grid" class="px-2.5 py-1.5 text-on-surface-variant hover:bg-surface-container" title="Grid view">
+            <span class="material-symbols-outlined text-[20px]">grid_view</span>
           </button>
         </div>
       </div>
+    </div>
 
-      <div class="grid grid-cols-1 gap-4" id="stats-row"></div>
-
-      <section>
-        <h3 class="text-lg font-semibold text-on-surface mb-4">Resource Folders</h3>
-        <div id="folder-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"></div>
-      </section>
-
-      <div class="bg-surface rounded-xl border border-outline-variant/50 overflow-hidden">
-        <div class="grid grid-cols-12 gap-4 p-4 border-b border-outline-variant/50 bg-surface-container-low text-on-surface-variant text-xs uppercase tracking-wider">
-          <div class="col-span-6 md:col-span-5">Name</div>
-          <div class="col-span-3 hidden md:block">Uploaded By</div>
-          <div class="col-span-3 md:col-span-2">Size</div>
-          <div class="col-span-3 md:col-span-2">Status</div>
-        </div>
-        <div id="media-list" class="divide-y divide-outline-variant/30"></div>
-      </div>
+    <div id="drive-drop-surface" class="flex-1 overflow-y-auto px-4 md:px-8 py-4">
+      <div id="drive-content"></div>
     </div>
   </div>
 
@@ -55,18 +65,18 @@
     <div class="bg-surface rounded-2xl shadow-lg w-full max-w-md overflow-hidden border border-outline-variant/30">
       <div class="p-6 border-b border-outline-variant/30 flex justify-between items-center">
         <div>
-          <h3 class="text-xl font-semibold">Upload Resource</h3>
+          <h3 class="text-xl font-semibold">Upload file</h3>
           <p id="upload-folder-label" class="text-sm text-on-surface-variant mt-0.5"></p>
         </div>
         <button type="button" data-close-upload class="p-1 rounded-full hover:bg-surface-container"><span class="material-symbols-outlined">close</span></button>
       </div>
       <div class="p-6 space-y-6">
         <div id="drop-zone" class="border-2 border-dashed border-outline-variant rounded-xl p-8 flex flex-col items-center justify-center text-center hover:bg-surface-container-low hover:border-primary transition-colors cursor-pointer">
-          <div class="w-12 h-12 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center mb-4">
+          <div class="w-12 h-12 rounded-full bg-primary-container text-on-primary flex items-center justify-center mb-4">
             <span class="material-symbols-outlined">cloud_upload</span>
           </div>
           <p class="text-on-surface mb-1">Click to browse or drag and drop</p>
-          <p id="upload-hint" class="text-xs text-on-surface-variant">PDF, PPTX, DOCX up to 50MB (mock — file stays local)</p>
+          <p id="upload-hint" class="text-xs text-on-surface-variant">PDF, PPTX, DOCX, images — mock file stays local</p>
           <input type="file" id="file-input" class="hidden" accept=".pdf,.pptx,.docx,.txt,.png,.jpg,.jpeg,.gif,.webp"/>
         </div>
         <div id="upload-progress" class="hidden bg-surface-container-low rounded-lg p-4 border border-outline-variant/30">
@@ -85,7 +95,7 @@
         <div id="fake-upload-wrap">
           <label class="text-sm text-on-surface-variant">Or simulate by name</label>
           <div class="flex gap-2 mt-1">
-            <input id="fake-name" class="flex-1 rounded-lg border-outline-variant bg-surface-container-low text-sm" placeholder="e.g. Unit3.pdf or scanned_fail.pdf"/>
+            <input id="fake-name" class="flex-1 rounded-lg border-outline-variant bg-surface-container-low text-sm" placeholder="e.g. Unit3.pdf or bookstore.jpg"/>
             <button type="button" id="btn-fake-upload" class="px-3 py-2 bg-surface-container rounded-lg text-sm border border-outline-variant">Add</button>
           </div>
         </div>
@@ -99,8 +109,9 @@
 
   <div id="folder-modal" class="hidden fixed inset-0 z-50 bg-on-background/50 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl p-6 w-full max-w-sm border border-outline-variant">
-      <h3 class="font-semibold mb-3">New Folder</h3>
-      <input id="folder-name-input" class="w-full rounded-lg border-outline-variant bg-surface-container-low mb-4" placeholder="e.g. Grade 7 - Biology"/>
+      <h3 id="folder-modal-title" class="font-semibold mb-3">New folder</h3>
+      <input id="folder-name-input" class="w-full rounded-lg border-outline-variant bg-surface-container-low mb-4" placeholder="Untitled folder"/>
+      <input type="hidden" id="folder-rename-id"/>
       <div class="flex justify-end gap-2">
         <button type="button" id="folder-cancel" class="px-3 py-2 text-sm rounded-lg hover:bg-surface-container">Cancel</button>
         <button type="button" id="folder-save" class="px-3 py-2 text-sm bg-primary text-on-primary rounded-lg">Create</button>
@@ -110,7 +121,7 @@
 
   <div id="rename-modal" class="hidden fixed inset-0 z-50 bg-on-background/50 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-surface rounded-xl p-6 w-full max-w-sm border border-outline-variant">
-      <h3 class="font-semibold mb-3">Rename resource</h3>
+      <h3 class="font-semibold mb-3">Rename</h3>
       <input id="rename-input" class="w-full rounded-lg border-outline-variant bg-surface-container-low mb-4"/>
       <input type="hidden" id="rename-id"/>
       <div class="flex justify-end gap-2">
@@ -126,60 +137,55 @@
 <script src="js/layout.js"></script>
 <script src="js/media.js"></script>
 <script>
-  XplainLayout.init({ active: "media" });
-  let activeFolder = null;
-  let uploadFolderId = null;
+  XplainLayout.init({ active: "media", overflowHidden: true });
 
-  function openUploadModal(folderId) {
-    uploadFolderId = folderId;
-    activeFolder = folderId;
-    const folder = XplainStore.getFolders().find((f) => f.id === folderId);
-    const imagesOnly = XplainStore.isImagesFolder(folderId);
-    document.getElementById("upload-folder-label").textContent = folder
-      ? `Uploading to “${folder.name}”`
-      : "";
-    document.querySelector("#upload-modal h3").textContent = imagesOnly
-      ? "Upload Images"
-      : "Upload Resource";
-    document.getElementById("upload-hint").textContent = imagesOnly
-      ? "PNG, JPG, GIF, or WebP only (mock — file stays local)"
-      : "PDF, PPTX, DOCX up to 50MB — images go in the Images folder";
-    document.getElementById("file-input").accept = imagesOnly
-      ? "image/png,image/jpeg,image/gif,image/webp,.png,.jpg,.jpeg,.gif,.webp"
-      : ".pdf,.pptx,.docx,.txt";
-    document.getElementById("fake-upload-wrap").classList.toggle("hidden", imagesOnly);
-    document.getElementById("fake-name").placeholder = imagesOnly
-      ? "e.g. bookstore.jpg"
-      : "e.g. Unit3.pdf or scanned_fail.pdf";
-    document.getElementById("upload-progress").classList.add("hidden");
-    document.getElementById("fake-name").value = "";
-    XplainUI.openModal("upload-modal");
+  let currentFolderId = null;
+  let viewMode = localStorage.getItem("xplain-media-view") || "list";
+  let query = "";
+  let folderModalMode = "create";
+
+  function setViewMode(mode) {
+    viewMode = mode;
+    localStorage.setItem("xplain-media-view", mode);
+    document.getElementById("view-list").classList.toggle("bg-primary/10", mode === "list");
+    document.getElementById("view-list").classList.toggle("text-primary", mode === "list");
+    document.getElementById("view-grid").classList.toggle("bg-primary/10", mode === "grid");
+    document.getElementById("view-grid").classList.toggle("text-primary", mode === "grid");
     render();
   }
 
+  function closeNewMenu() {
+    document.getElementById("new-menu").classList.add("hidden");
+  }
+
+  function openUploadModal() {
+    if (!currentFolderId) {
+      XplainUI.toast("Open a folder", "Files can only be uploaded inside a folder.", { icon: "folder" });
+      return;
+    }
+    const folder = XplainStore.getFolder(currentFolderId);
+    document.getElementById("upload-folder-label").textContent = folder
+      ? `Uploading to “${folder.name}”`
+      : "";
+    document.getElementById("upload-progress").classList.add("hidden");
+    document.getElementById("fake-name").value = "";
+    closeNewMenu();
+    XplainUI.openModal("upload-modal");
+  }
+
   async function startUpload(fileOrName) {
-    const folderId = uploadFolderId || activeFolder;
-    if (!folderId) {
-      XplainUI.toast("Pick a folder", "Upload from a folder card", { icon: "folder" });
+    if (!currentFolderId) {
+      XplainUI.toast("Open a folder", "Files can only be uploaded inside a folder.", { icon: "folder" });
       return;
     }
-    const imagesOnly = XplainStore.isImagesFolder(folderId);
     const name = typeof fileOrName === "string" ? fileOrName : fileOrName.name;
-    if (imagesOnly && !XplainMedia.isImageFile(fileOrName)) {
-      XplainUI.toast("Images only", "Choose a PNG, JPG, GIF, or WebP file.", { icon: "image" });
-      return;
-    }
-    if (!imagesOnly && XplainMedia.isImageFile(fileOrName)) {
-      XplainUI.toast("Use Images folder", "Photos upload only to Images.", { icon: "folder" });
-      return;
-    }
+    const isImg = XplainMedia.isImageFile(fileOrName);
     const box = document.getElementById("upload-progress");
     box.classList.remove("hidden");
     document.getElementById("upload-name").textContent = name;
-    document.getElementById("upload-icon").textContent = imagesOnly ? "image" : "picture_as_pdf";
+    document.getElementById("upload-icon").textContent = isImg ? "image" : "picture_as_pdf";
     await XplainMedia.simulateUpload(fileOrName, {
-      folder_id: folderId,
-      images_only: imagesOnly,
+      folder_id: currentFolderId,
       onProgress(pct, id, label) {
         document.getElementById("upload-pct").textContent = pct + "%";
         document.getElementById("upload-bar").style.width = pct + "%";
@@ -189,7 +195,7 @@
       onDone(id, status) {
         if (status === "rejected") return;
         XplainUI.toast(
-          status === "indexed" ? (imagesOnly ? "Image saved" : "Indexed") : "Indexing failed",
+          status === "indexed" ? "Ready" : "Indexing failed",
           name,
           { icon: status === "indexed" ? "check_circle" : "error" }
         );
@@ -198,100 +204,147 @@
     });
   }
 
-  function render() {
-    const media = XplainStore.getMedia();
-    const folders = XplainStore.getFolders();
-    const filter = document.getElementById("media-filter").value;
-    const totalBytes = media.reduce((s, m) => s + (m.size_bytes || 0), 0);
-    const quota = 10 * 1024 * 1024 * 1024;
-    const pct = Math.min(100, Math.round((totalBytes / quota) * 1000) / 10) || 4;
+  function openCreateFolderModal() {
+    folderModalMode = "create";
+    document.getElementById("folder-modal-title").textContent = "New folder";
+    document.getElementById("folder-save").textContent = "Create";
+    document.getElementById("folder-name-input").value = "";
+    document.getElementById("folder-rename-id").value = "";
+    closeNewMenu();
+    XplainUI.openModal("folder-modal");
+    setTimeout(() => document.getElementById("folder-name-input").focus(), 50);
+  }
 
-    document.getElementById("stats-row").innerHTML = `
-      <div class="bg-surface p-6 rounded-xl border border-outline-variant/30">
-        <span class="material-symbols-outlined text-on-surface-variant mb-4 text-3xl">storage</span>
-        <p class="text-xs uppercase text-on-surface-variant mb-1">Storage Used</p>
-        <p class="text-2xl font-semibold">${XplainUI.formatBytes(totalBytes)} <span class="text-base font-normal text-on-surface-variant">/ 10 GB</span></p>
-        <div class="w-full bg-surface-variant h-1.5 rounded-full mt-2"><div class="bg-primary h-1.5 rounded-full" style="width:${Math.max(pct, 8)}%"></div></div>
-      </div>`;
+  function openRenameFolderModal(folder) {
+    folderModalMode = "rename";
+    document.getElementById("folder-modal-title").textContent = "Rename folder";
+    document.getElementById("folder-save").textContent = "Save";
+    document.getElementById("folder-name-input").value = folder.name;
+    document.getElementById("folder-rename-id").value = folder.id;
+    XplainUI.openModal("folder-modal");
+    setTimeout(() => {
+      const input = document.getElementById("folder-name-input");
+      input.focus();
+      input.select();
+    }, 50);
+  }
 
-    document.getElementById("folder-grid").innerHTML = folders.map((f) => {
-      const count = media.filter((m) => m.folder_id === f.id).length;
-      const active = activeFolder === f.id;
-      const imagesOnly = XplainStore.isImagesFolder(f.id);
-      return `<div class="flex flex-col bg-surface rounded-xl border ${active ? "border-primary bg-surface-container-low" : "border-outline-variant"} overflow-hidden">
-        <button type="button" class="folder-btn group flex items-start gap-4 p-5 text-left hover:bg-surface-container-low/60 flex-1" data-id="${f.id}">
-          <span class="material-symbols-outlined text-primary text-4xl ${active ? "fill-icon" : ""}">${imagesOnly ? "photo_library" : "folder"}</span>
-          <div class="min-w-0">
-            <h3 class="font-semibold text-on-surface mb-1 truncate">${XplainUI.escapeHtml(f.name)}</h3>
-            <p class="text-xs text-on-surface-variant">${count} items • ${imagesOnly ? "Images only" : "Updated " + XplainUI.relativeTime(f.updated_at)}</p>
-          </div>
-        </button>
-        <div class="px-5 pb-4">
-          <button type="button" class="upload-folder-btn w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm border border-outline-variant hover:border-primary hover:bg-primary-container/20 text-on-surface" data-id="${f.id}">
-            <span class="material-symbols-outlined text-sm">${imagesOnly ? "add_photo_alternate" : "upload"}</span> ${imagesOnly ? "Upload Images" : "Upload Resource"}
-          </button>
-        </div>
-      </div>`;
-    }).join("") || `<p class="text-on-surface-variant col-span-full text-sm">No folders yet. Create one to start uploading.</p>`;
-
-    document.querySelectorAll(".folder-btn").forEach((btn) => {
+  function renderBreadcrumb() {
+    const nav = document.getElementById("drive-breadcrumb");
+    const path = currentFolderId ? XplainStore.getFolderPath(currentFolderId) : [];
+    const crumb = (id, label, isLast) => {
+      if (isLast) {
+        return `<span class="font-semibold text-on-surface truncate max-w-[160px]">${XplainUI.escapeHtml(label)}</span>`;
+      }
+      return `<button type="button" class="crumb-btn text-on-surface-variant hover:text-primary truncate max-w-[140px]" data-id="${id === null ? "" : id}">${XplainUI.escapeHtml(label)}</button>`;
+    };
+    const parts = [crumb(null, "My Drive", path.length === 0)];
+    path.forEach((f, i) => {
+      parts.push(`<span class="material-symbols-outlined text-on-surface-variant text-[18px] shrink-0">chevron_right</span>`);
+      parts.push(crumb(f.id, f.name, i === path.length - 1));
+    });
+    nav.innerHTML = parts.join("");
+    nav.querySelectorAll(".crumb-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
-        activeFolder = activeFolder === btn.dataset.id ? null : btn.dataset.id;
+        const v = btn.dataset.id;
+        currentFolderId = v === "" ? null : v;
         render();
       });
     });
-    document.querySelectorAll(".upload-folder-btn").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        openUploadModal(btn.dataset.id);
+  }
+
+  function matchesQuery(name) {
+    const q = query.toLowerCase().trim();
+    return !q || (name || "").toLowerCase().includes(q);
+  }
+
+  function folderActions(f) {
+    return `
+      <div class="drive-actions hidden group-hover:flex items-center gap-0.5 shrink-0" onclick="event.stopPropagation()">
+        <button type="button" class="rename-folder-btn p-1.5 rounded-full text-on-surface-variant hover:bg-surface-container hover:text-primary" data-id="${f.id}" title="Rename">
+          <span class="material-symbols-outlined text-[18px]">edit</span>
+        </button>
+        <button type="button" class="delete-folder-btn p-1.5 rounded-full text-on-surface-variant hover:bg-surface-container hover:text-error" data-id="${f.id}" title="Delete">
+          <span class="material-symbols-outlined text-[18px]">delete</span>
+        </button>
+      </div>`;
+  }
+
+  function mediaActions(m) {
+    return `
+      <div class="drive-actions hidden group-hover:flex items-center gap-0.5 shrink-0" onclick="event.stopPropagation()">
+        ${m.status === "failed" ? `<button type="button" class="reindex-btn p-1.5 rounded-full text-on-surface-variant hover:bg-surface-container hover:text-primary" data-id="${m.id}" title="Re-index"><span class="material-symbols-outlined text-[18px]">refresh</span></button>` : ""}
+        <button type="button" class="rename-btn p-1.5 rounded-full text-on-surface-variant hover:bg-surface-container hover:text-primary" data-id="${m.id}" title="Rename">
+          <span class="material-symbols-outlined text-[18px]">edit</span>
+        </button>
+        <button type="button" class="delete-btn p-1.5 rounded-full text-on-surface-variant hover:bg-surface-container hover:text-error" data-id="${m.id}" title="Delete">
+          <span class="material-symbols-outlined text-[18px]">delete</span>
+        </button>
+      </div>`;
+  }
+
+  function mediaThumb(m) {
+    const isImg = (m.mime_type || "").startsWith("image/");
+    if (isImg && m.data_url) {
+      return `<img src="${m.data_url}" class="w-full h-full object-cover" alt=""/>`;
+    }
+    return `<span class="material-symbols-outlined text-lg">${XplainUI.mediaIcon(m.mime_type)}</span>`;
+  }
+
+  function bindItemActions(root) {
+    root.querySelectorAll(".folder-open").forEach((el) => {
+      el.addEventListener("click", () => {
+        currentFolderId = el.dataset.id;
+        render();
+      });
+      el.addEventListener("dblclick", () => {
+        currentFolderId = el.dataset.id;
+        render();
       });
     });
-
-    let list = media;
-    if (activeFolder) list = list.filter((m) => m.folder_id === activeFolder);
-    if (filter !== "all") list = list.filter((m) => m.status === filter);
-
-    document.getElementById("media-list").innerHTML = list.map((m) => {
-      const isImg = (m.mime_type || "").startsWith("image/");
-      const thumb = isImg && m.data_url
-        ? `<img src="${m.data_url}" class="w-full h-full object-cover" alt=""/>`
-        : `<span class="material-symbols-outlined text-lg">${XplainUI.mediaIcon(m.mime_type)}</span>`;
-      return `
-<div class="grid grid-cols-12 gap-4 p-4 items-center hover:bg-surface-container transition-colors group ${m.status === "failed" ? "opacity-70" : ""}">
-  <div class="col-span-6 md:col-span-5 flex items-center gap-3 min-w-0">
-    <div class="w-10 h-10 rounded overflow-hidden ${isImg ? "bg-surface-container-high" : m.mime_type?.includes("pdf") ? "bg-error-container text-on-error-container" : "bg-primary-container/50 text-primary"} flex items-center justify-center shrink-0">
-      ${thumb}
-    </div>
-    <div class="min-w-0">
-      <p class="font-medium text-on-surface truncate">${XplainUI.escapeHtml(m.display_name)}</p>
-      <p class="text-xs text-on-surface-variant truncate md:hidden">${XplainUI.escapeHtml(m.uploaded_by)}</p>
-    </div>
-  </div>
-  <div class="col-span-3 hidden md:block text-sm text-on-surface-variant truncate">${XplainUI.escapeHtml(m.uploaded_by)}</div>
-  <div class="col-span-3 md:col-span-2 text-sm text-on-surface-variant">${XplainUI.formatBytes(m.size_bytes)}</div>
-  <div class="col-span-3 md:col-span-2 flex items-center justify-between gap-1">
-    ${XplainUI.statusChip(m.status)}
-    <div class="hidden group-hover:flex items-center">
-      ${m.status === "failed" ? `<button class="reindex-btn p-1.5 text-on-surface-variant hover:text-primary" data-id="${m.id}" title="Re-index"><span class="material-symbols-outlined text-sm">refresh</span></button>` : ""}
-      <button class="rename-btn p-1.5 text-on-surface-variant hover:text-primary" data-id="${m.id}" title="Rename"><span class="material-symbols-outlined text-sm">edit</span></button>
-      <button class="delete-btn p-1.5 text-on-surface-variant hover:text-error" data-id="${m.id}" title="Delete"><span class="material-symbols-outlined text-sm">delete</span></button>
-    </div>
-  </div>
-</div>`;
-    }).join("") || `<p class="p-8 text-center text-on-surface-variant text-sm">No resources in this view.</p>`;
-
-    document.querySelectorAll(".rename-btn").forEach((b) =>
-      b.addEventListener("click", () => {
+    root.querySelectorAll(".rename-folder-btn").forEach((b) => {
+      b.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const f = XplainStore.getFolder(b.dataset.id);
+        if (f) openRenameFolderModal(f);
+      });
+    });
+    root.querySelectorAll(".delete-folder-btn").forEach((b) => {
+      b.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const f = XplainStore.getFolder(b.dataset.id);
+        if (!f) return;
+        const ok = await XplainUI.confirmDialog({
+          title: "Delete folder?",
+          message: `Delete “${f.name}”? It must be empty.`,
+          confirmLabel: "Delete",
+          cancelLabel: "Cancel",
+          danger: true,
+        });
+        if (!ok) return;
+        const result = XplainStore.deleteFolder(f.id);
+        if (!result.ok) {
+          XplainUI.toast("Can't delete", result.reason, { icon: "folder" });
+          return;
+        }
+        XplainUI.toast("Folder deleted", f.name, { icon: "delete" });
+        render();
+      });
+    });
+    root.querySelectorAll(".rename-btn").forEach((b) => {
+      b.addEventListener("click", (e) => {
+        e.stopPropagation();
         const m = XplainStore.getMediaItem(b.dataset.id);
         document.getElementById("rename-id").value = m.id;
         document.getElementById("rename-input").value = m.display_name;
         XplainUI.openModal("rename-modal");
-      })
-    );
-    document.querySelectorAll(".delete-btn").forEach((b) =>
-      b.addEventListener("click", async () => {
+      });
+    });
+    root.querySelectorAll(".delete-btn").forEach((b) => {
+      b.addEventListener("click", async (e) => {
+        e.stopPropagation();
         const ok = await XplainUI.confirmDialog({
-          title: "Delete resource?",
+          title: "Delete file?",
           message: "This will purge the mock media item.",
           confirmLabel: "Delete",
           cancelLabel: "Cancel",
@@ -300,28 +353,167 @@
         if (!ok) return;
         XplainStore.deleteMedia(b.dataset.id);
         render();
-      })
-    );
-    document.querySelectorAll(".reindex-btn").forEach((b) =>
-      b.addEventListener("click", () => {
+      });
+    });
+    root.querySelectorAll(".reindex-btn").forEach((b) => {
+      b.addEventListener("click", (e) => {
+        e.stopPropagation();
         XplainMedia.reindex(b.dataset.id);
         render();
         setTimeout(render, 1600);
-      })
-    );
+      });
+    });
   }
 
-  document.getElementById("btn-new-folder").addEventListener("click", () => {
-    document.getElementById("folder-name-input").value = "";
-    XplainUI.openModal("folder-modal");
-    setTimeout(() => document.getElementById("folder-name-input").focus(), 50);
+  function renderList(folders, files) {
+    const header = `
+      <div class="grid grid-cols-12 gap-2 px-3 py-2 text-xs uppercase tracking-wider text-on-surface-variant border-b border-outline-variant/30">
+        <div class="col-span-5 md:col-span-5">Name</div>
+        <div class="col-span-3 hidden md:block">Owner</div>
+        <div class="col-span-2 hidden sm:block">Modified</div>
+        <div class="col-span-3 sm:col-span-2">Size</div>
+        <div class="col-span-4 sm:col-span-2 md:col-span-2">Status</div>
+      </div>`;
+
+    const folderRows = folders.map((f) => `
+      <div class="folder-open group grid grid-cols-12 gap-2 px-3 py-2.5 items-center hover:bg-surface-container-low cursor-pointer rounded-lg" data-id="${f.id}">
+        <div class="col-span-5 md:col-span-5 flex items-center gap-3 min-w-0">
+          <span class="material-symbols-outlined text-primary text-[28px] fill-icon shrink-0">folder</span>
+          <span class="font-medium text-on-surface truncate">${XplainUI.escapeHtml(f.name)}</span>
+          ${folderActions(f)}
+        </div>
+        <div class="col-span-3 hidden md:block text-sm text-on-surface-variant truncate">—</div>
+        <div class="col-span-2 hidden sm:block text-sm text-on-surface-variant">${XplainUI.relativeTime(f.updated_at)}</div>
+        <div class="col-span-3 sm:col-span-2 text-sm text-on-surface-variant">—</div>
+        <div class="col-span-4 sm:col-span-2 text-sm text-on-surface-variant">Folder</div>
+      </div>`).join("");
+
+    const fileRows = files.map((m) => {
+      const isImg = (m.mime_type || "").startsWith("image/");
+      return `
+      <div class="group grid grid-cols-12 gap-2 px-3 py-2.5 items-center hover:bg-surface-container-low rounded-lg ${m.status === "failed" ? "opacity-70" : ""}">
+        <div class="col-span-5 md:col-span-5 flex items-center gap-3 min-w-0">
+          <div class="w-8 h-8 rounded overflow-hidden ${isImg ? "bg-surface-container-high" : m.mime_type?.includes("pdf") ? "bg-error-container text-on-error-container" : "bg-primary-container/50 text-primary"} flex items-center justify-center shrink-0">
+            ${mediaThumb(m)}
+          </div>
+          <span class="font-medium text-on-surface truncate">${XplainUI.escapeHtml(m.display_name)}</span>
+          ${mediaActions(m)}
+        </div>
+        <div class="col-span-3 hidden md:block text-sm text-on-surface-variant truncate">${XplainUI.escapeHtml(m.uploaded_by || "—")}</div>
+        <div class="col-span-2 hidden sm:block text-sm text-on-surface-variant">${XplainUI.relativeTime(m.created_at)}</div>
+        <div class="col-span-3 sm:col-span-2 text-sm text-on-surface-variant">${XplainUI.formatBytes(m.size_bytes)}</div>
+        <div class="col-span-4 sm:col-span-2 flex items-center">${XplainUI.statusChip(m.status)}</div>
+      </div>`;
+    }).join("");
+
+    return `<div class="bg-surface rounded-xl border border-outline-variant/30 overflow-hidden">${header}<div class="p-1">${folderRows}${fileRows}</div></div>`;
+  }
+
+  function renderGrid(folders, files) {
+    const folderTiles = folders.map((f) => `
+      <div class="folder-open group relative flex flex-col rounded-xl border border-outline-variant/40 bg-surface hover:bg-surface-container-low cursor-pointer overflow-hidden" data-id="${f.id}">
+        <div class="aspect-[4/3] flex items-center justify-center bg-surface-container-low/80">
+          <span class="material-symbols-outlined text-primary text-5xl fill-icon">folder</span>
+        </div>
+        <div class="p-3 flex items-start justify-between gap-1">
+          <div class="min-w-0">
+            <p class="text-sm font-medium truncate">${XplainUI.escapeHtml(f.name)}</p>
+            <p class="text-xs text-on-surface-variant">${XplainUI.relativeTime(f.updated_at)}</p>
+          </div>
+          ${folderActions(f)}
+        </div>
+      </div>`).join("");
+
+    const fileTiles = files.map((m) => {
+      const isImg = (m.mime_type || "").startsWith("image/");
+      return `
+      <div class="group relative flex flex-col rounded-xl border border-outline-variant/40 bg-surface hover:bg-surface-container-low overflow-hidden ${m.status === "failed" ? "opacity-70" : ""}">
+        <div class="aspect-[4/3] flex items-center justify-center ${isImg ? "bg-surface-container-high" : m.mime_type?.includes("pdf") ? "bg-error-container/40 text-on-error-container" : "bg-primary-container/20 text-primary"}">
+          ${isImg && m.data_url ? `<img src="${m.data_url}" class="w-full h-full object-cover" alt=""/>` : `<span class="material-symbols-outlined text-4xl">${XplainUI.mediaIcon(m.mime_type)}</span>`}
+        </div>
+        <div class="p-3 flex items-start justify-between gap-1">
+          <div class="min-w-0">
+            <p class="text-sm font-medium truncate">${XplainUI.escapeHtml(m.display_name)}</p>
+            <div class="mt-1">${XplainUI.statusChip(m.status)}</div>
+          </div>
+          ${mediaActions(m)}
+        </div>
+      </div>`;
+    }).join("");
+
+    return `<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">${folderTiles}${fileTiles}</div>`;
+  }
+
+  function render() {
+    const media = XplainStore.getMedia();
+    const totalBytes = media.reduce((s, m) => s + (m.size_bytes || 0), 0);
+    document.getElementById("storage-compact").textContent =
+      `${XplainUI.formatBytes(totalBytes)} of 10 GB used`;
+
+    document.getElementById("menu-upload").disabled = !currentFolderId;
+
+    renderBreadcrumb();
+
+    const folders = XplainStore.getChildFolders(currentFolderId).filter((f) =>
+      matchesQuery(f.name)
+    );
+    const filter = document.getElementById("media-filter").value;
+    let files = [];
+    if (currentFolderId) {
+      files = media
+        .filter((m) => m.folder_id === currentFolderId)
+        .filter((m) => matchesQuery(m.display_name))
+        .filter((m) => filter === "all" || m.status === filter);
+    }
+
+    const box = document.getElementById("drive-content");
+    if (!folders.length && !files.length) {
+      const atRoot = !currentFolderId;
+      box.innerHTML = `
+        <div class="flex flex-col items-center justify-center py-20 text-center px-4">
+          <span class="material-symbols-outlined text-5xl text-primary/40 mb-4">${atRoot ? "folder_open" : "cloud_upload"}</span>
+          <h3 class="text-lg font-semibold text-on-surface mb-1">${atRoot ? "Welcome to My Drive" : "This folder is empty"}</h3>
+          <p class="text-sm text-on-surface-variant max-w-sm mb-6">${
+            atRoot
+              ? "Create a folder to organize your resources. Files can only be uploaded inside a folder."
+              : "Upload files or create a subfolder to get started."
+          }</p>
+          <div class="flex flex-wrap gap-2 justify-center">
+            <button type="button" id="empty-new-folder" class="px-4 py-2 bg-primary text-on-primary rounded-full text-sm">New folder</button>
+            ${!atRoot ? `<button type="button" id="empty-upload" class="px-4 py-2 border border-outline-variant rounded-full text-sm hover:bg-surface-container">Upload file</button>` : ""}
+          </div>
+        </div>`;
+      box.querySelector("#empty-new-folder")?.addEventListener("click", openCreateFolderModal);
+      box.querySelector("#empty-upload")?.addEventListener("click", openUploadModal);
+      return;
+    }
+
+    box.innerHTML = viewMode === "grid" ? renderGrid(folders, files) : renderList(folders, files);
+    bindItemActions(box);
+  }
+
+  document.getElementById("btn-new").addEventListener("click", (e) => {
+    e.stopPropagation();
+    document.getElementById("new-menu").classList.toggle("hidden");
   });
+  document.addEventListener("click", () => closeNewMenu());
+  document.getElementById("new-menu").addEventListener("click", (e) => e.stopPropagation());
+  document.getElementById("menu-new-folder").addEventListener("click", openCreateFolderModal);
+  document.getElementById("menu-upload").addEventListener("click", openUploadModal);
+
   document.getElementById("folder-cancel").addEventListener("click", () => XplainUI.closeModal("folder-modal"));
   document.getElementById("folder-save").addEventListener("click", () => {
     const name = document.getElementById("folder-name-input").value.trim();
     if (!name) return;
-    const folder = XplainStore.addFolder({ name });
-    activeFolder = folder.id;
+    if (folderModalMode === "rename") {
+      const id = document.getElementById("folder-rename-id").value;
+      XplainStore.renameFolder(id, name);
+      XplainUI.closeModal("folder-modal");
+      XplainUI.toast("Folder renamed", name, { icon: "edit" });
+      render();
+      return;
+    }
+    const folder = XplainStore.addFolder({ name, parent_id: currentFolderId });
     XplainUI.closeModal("folder-modal");
     XplainUI.toast("Folder created", name, { icon: "create_new_folder" });
     render();
@@ -344,13 +536,44 @@
     if (e.dataTransfer.files[0]) startUpload(e.dataTransfer.files[0]);
   });
   input.addEventListener("change", () => {
-    if (input.files[0]) startUpload(input.files[0]);
+    if (input.files[0]) {
+      startUpload(input.files[0]);
+      input.value = "";
+    }
   });
   document.getElementById("btn-fake-upload").addEventListener("click", () => {
     const n = document.getElementById("fake-name").value.trim();
     if (n) startUpload(n);
   });
+
+  const surface = document.getElementById("drive-drop-surface");
+  surface.addEventListener("dragover", (e) => {
+    if (!currentFolderId) return;
+    e.preventDefault();
+    surface.classList.add("ring-2", "ring-primary", "ring-inset");
+  });
+  surface.addEventListener("dragleave", () => {
+    surface.classList.remove("ring-2", "ring-primary", "ring-inset");
+  });
+  surface.addEventListener("drop", (e) => {
+    surface.classList.remove("ring-2", "ring-primary", "ring-inset");
+    if (!currentFolderId) {
+      e.preventDefault();
+      XplainUI.toast("Open a folder", "Files can only be uploaded inside a folder.", { icon: "folder" });
+      return;
+    }
+    e.preventDefault();
+    if (e.dataTransfer.files[0]) startUpload(e.dataTransfer.files[0]);
+  });
+
   document.getElementById("media-filter").addEventListener("change", render);
+  document.getElementById("drive-search").addEventListener("input", (e) => {
+    query = e.target.value;
+    render();
+  });
+  document.getElementById("view-list").addEventListener("click", () => setViewMode("list"));
+  document.getElementById("view-grid").addEventListener("click", () => setViewMode("grid"));
+
   document.getElementById("rename-cancel").addEventListener("click", () => XplainUI.closeModal("rename-modal"));
   document.getElementById("rename-save").addEventListener("click", () => {
     const id = document.getElementById("rename-id").value;
@@ -360,7 +583,6 @@
     render();
   });
 
-  // Auto-advance seed processing item
   const processing = XplainStore.getMedia().find((m) => m.id === "m-history" && m.status === "processing");
   if (processing) {
     setTimeout(() => {
@@ -369,7 +591,7 @@
     }, 4000);
   }
 
-  render();
+  setViewMode(viewMode);
   window.addEventListener("xplain:store", render);
 </script>
 </body>

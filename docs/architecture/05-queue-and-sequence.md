@@ -32,7 +32,7 @@ flowchart TB
 | `describe_media` | describer | Hetzner file | `media.description`, `media.summary` |
 | `plan_lesson` | planner | preferences + media text + identity | plan payload, status `awaiting_execute_approval` |
 | `revise_plan` | planner | plan + edit | updated plan |
-| `execute_lesson` | executer | plan + preferences + identity | lesson JSON, `json_url`, `slides_ready` |
+| `execute_lesson` | executer | plan + preferences + identity (from DB) | lesson JSON (no identity/preferences roots), `json_url`, `slides_ready` |
 
 | Real-time | Service | Transport |
 |-----------|---------|-----------|
