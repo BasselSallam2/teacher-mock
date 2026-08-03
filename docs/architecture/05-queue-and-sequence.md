@@ -137,3 +137,21 @@ sequenceDiagram
     Worker->>PG: status=failed
   end
 ```
+
+## SAQ queue monitor (production teacher-api)
+
+The live teacher stack uses **SAQ** (not Bull Board). The built-in web UI is mounted on teacher-api:
+
+| Item | Value |
+|------|--------|
+| UI path | `/queues` (e.g. `https://teachers.api.dev.getxplain.ai/queues`) |
+| Health | `GET /queues/health` — queue names, Redis URL presence, connectivity |
+| Env | `REDIS_URL`, `PLANNER_REDIS_URL`, `EXECUTER_REDIS_URL`, `IMAGE_MANAGER_REDIS_URL` |
+| Disable | `QUEUE_MONITOR_ENABLED=false` |
+
+If the UI is blank or 404:
+
+1. Confirm all four Redis URLs are set in the teacher-api ConfigMap.
+2. Pass **nginx basic auth** on the API ingress (same as other API routes).
+3. Check `GET /queues/health` for `queue_count` and per-queue `connectivity`.
+4. Ensure workers use matching queue names: `teacher-lesson-planner`, `teacher-lesson-executer`, etc.

@@ -368,41 +368,38 @@
   function renderList(folders, files) {
     const header = `
       <div class="grid grid-cols-12 gap-2 px-3 py-2 text-xs uppercase tracking-wider text-on-surface-variant border-b border-outline-variant/30">
-        <div class="col-span-5 md:col-span-5">Name</div>
-        <div class="col-span-3 hidden md:block">Owner</div>
-        <div class="col-span-2 hidden sm:block">Modified</div>
+        <div class="col-span-6 sm:col-span-5 md:col-span-6">Name</div>
+        <div class="col-span-3 hidden sm:block">Modified</div>
         <div class="col-span-3 sm:col-span-2">Size</div>
-        <div class="col-span-4 sm:col-span-2 md:col-span-2">Status</div>
+        <div class="col-span-3 sm:col-span-2">Status</div>
       </div>`;
 
     const folderRows = folders.map((f) => `
       <div class="folder-open group grid grid-cols-12 gap-2 px-3 py-2.5 items-center hover:bg-surface-container-low cursor-pointer rounded-lg" data-id="${f.id}">
-        <div class="col-span-5 md:col-span-5 flex items-center gap-3 min-w-0">
+        <div class="col-span-6 sm:col-span-5 md:col-span-6 flex items-center gap-3 min-w-0">
           <span class="material-symbols-outlined text-primary text-[28px] fill-icon shrink-0">folder</span>
           <span class="font-medium text-on-surface truncate">${XplainUI.escapeHtml(f.name)}</span>
           ${folderActions(f)}
         </div>
-        <div class="col-span-3 hidden md:block text-sm text-on-surface-variant truncate">—</div>
-        <div class="col-span-2 hidden sm:block text-sm text-on-surface-variant">${XplainUI.relativeTime(f.updated_at)}</div>
+        <div class="col-span-3 hidden sm:block text-sm text-on-surface-variant">${XplainUI.relativeTime(f.updated_at)}</div>
         <div class="col-span-3 sm:col-span-2 text-sm text-on-surface-variant">—</div>
-        <div class="col-span-4 sm:col-span-2 text-sm text-on-surface-variant">Folder</div>
+        <div class="col-span-3 sm:col-span-2 text-sm text-on-surface-variant">Folder</div>
       </div>`).join("");
 
     const fileRows = files.map((m) => {
       const isImg = (m.mime_type || "").startsWith("image/");
       return `
       <div class="group grid grid-cols-12 gap-2 px-3 py-2.5 items-center hover:bg-surface-container-low rounded-lg ${m.status === "failed" ? "opacity-70" : ""}">
-        <div class="col-span-5 md:col-span-5 flex items-center gap-3 min-w-0">
+        <div class="col-span-6 sm:col-span-5 md:col-span-6 flex items-center gap-3 min-w-0">
           <div class="w-8 h-8 rounded overflow-hidden ${isImg ? "bg-surface-container-high" : m.mime_type?.includes("pdf") ? "bg-error-container text-on-error-container" : "bg-primary-container/50 text-primary"} flex items-center justify-center shrink-0">
             ${mediaThumb(m)}
           </div>
           <span class="font-medium text-on-surface truncate">${XplainUI.escapeHtml(m.display_name)}</span>
           ${mediaActions(m)}
         </div>
-        <div class="col-span-3 hidden md:block text-sm text-on-surface-variant truncate">${XplainUI.escapeHtml(m.uploaded_by || "—")}</div>
-        <div class="col-span-2 hidden sm:block text-sm text-on-surface-variant">${XplainUI.relativeTime(m.created_at)}</div>
+        <div class="col-span-3 hidden sm:block text-sm text-on-surface-variant">${XplainUI.relativeTime(m.created_at)}</div>
         <div class="col-span-3 sm:col-span-2 text-sm text-on-surface-variant">${XplainUI.formatBytes(m.size_bytes)}</div>
-        <div class="col-span-4 sm:col-span-2 flex items-center">${XplainUI.statusChip(m.status)}</div>
+        <div class="col-span-3 sm:col-span-2 flex items-center">${XplainUI.statusChip(m.status)}</div>
       </div>`;
     }).join("");
 
