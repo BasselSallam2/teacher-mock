@@ -101,7 +101,7 @@ sequenceDiagram
 | Visible text | Stream + persist strip `<execute_tool>`, tool dumps, and JSON fences — teachers never see machine artifacts |
 | Preference sync | ADK tools preferred; runner also applies grounded `preference_updates` JSON + chip-answer inference so checklist/CTAs still update when tools are skipped |
 | Interaction chips | Required on every question: trailing JSON `interaction` → `message.meta` (quick replies + free text) |
-| Plan CTAs | UI shows **Make plan** when checklist complete, status is `awaiting_plan_approval`, or assistant says to click Make plan; **Skip questions & make plan** while chatting otherwise |
+| Plan CTAs | **Make plan** when checklist complete or status is `awaiting_plan_approval`; **Skip questions & make plan** while chatting once `preferences.topic` is set and checklist is still incomplete; **Continue chatting** when awaiting approval |
 | History | Postgres `lesson_messages` (rehydrated each turn) |
 | Concurrency | One run per lesson (409 if busy) |
 | Rollback | `ADK_AGENT_ENABLED=false` → legacy `LessonAgent` |
