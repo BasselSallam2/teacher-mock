@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>getXplain Teacher Tools — System Overview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="css/app.css"/>
+  <style>
+    body { font-family: "Space Grotesk", sans-serif; }
+    h1, h2, h3 { font-family: Nunito, sans-serif; }
+    .doc-prose h2 { margin-top: 2.5rem; margin-bottom: 1rem; font-size: 1.35rem; font-weight: 700; color: #110D2B; }
+    .doc-prose h3 { margin-top: 1.5rem; margin-bottom: 0.75rem; font-size: 1.05rem; font-weight: 600; color: #3D3760; }
+    .doc-prose p, .doc-prose li { color: #3D3760; line-height: 1.65; }
+    .doc-prose ul { list-style: disc; padding-left: 1.25rem; margin: 0.75rem 0; }
+    .doc-prose table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.9rem; }
+    .doc-prose th, .doc-prose td { border: 1px solid #cac3d8; padding: 0.5rem 0.75rem; text-align: left; }
+    .doc-prose th { background: #f1ebff; font-weight: 600; }
+    .doc-prose code { background: #f1ebff; padding: 0.1rem 0.35rem; border-radius: 0.25rem; font-size: 0.85em; }
+    .mermaid { background: #fff; border: 1px solid #e5deff; border-radius: 0.75rem; padding: 1rem; margin: 1rem 0; overflow-x: auto; }
+    .nav-link { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem; color: #3D3760; font-size: 0.875rem; }
+    .nav-link:hover { background: #ebe5ff; color: #7B4DFF; }
+    .badge { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 600; }
+    .badge-prod { background: #e7deff; color: #5A2EE0; }
+    .badge-mock { background: #ffddb4; color: #6b4500; }
+  </style>
+</head>
+<body class="bg-background text-on-background antialiased">
+  <div class="min-h-screen flex">
+    <aside class="hidden lg:block w-72 shrink-0 border-r border-outline-variant bg-surface-container-low p-4 sticky top-0 h-screen overflow-y-auto">
+      <a href="index.html" class="flex items-center gap-2 mb-6 text-on-surface hover:text-primary">
+        <span class="material-symbols-outlined text-sm">arrow_back</span>
+        <span class="text-sm font-medium">Back to mock app</span>
+      </a>
+      <p class="text-xs uppercase tracking-wider text-on-surface-variant mb-3">On this page</p>
+      <nav class="space-y-0.5" id="toc"></nav>
+      <hr class="my-6 border-outline-variant/40"/>
+      <p class="text-xs uppercase tracking-wider text-on-surface-variant mb-3">Architecture docs</p>
+      <nav class="space-y-0.5 text-sm">
+        <a class="nav-link" href="docs/architecture/README.md"><span class="material-symbols-outlined text-base">folder</span> Index</a>
+        <a class="nav-link" href="docs/architecture/01-system-overview.md"><span class="material-symbols-outlined text-base">hub</span> 01 System overview</a>
+        <a class="nav-link" href="docs/architecture/02-media-describer-flow.md"><span class="material-symbols-outlined text-base">upload_file</span> 02 Media / learner</a>
+        <a class="nav-link" href="docs/architecture/03-lesson-planner-executor-flow.md"><span class="material-symbols-outlined text-base">auto_stories</span> 03 Plan &amp; execute</a>
+        <a class="nav-link" href="docs/architecture/04-database.md"><span class="material-symbols-outlined text-base">database</span> 04 Database</a>
+        <a class="nav-link" href="docs/architecture/05-queue-and-sequence.md"><span class="material-symbols-outlined text-base">queue</span> 05 Queues</a>
+        <a class="nav-link" href="docs/architecture/06-chat-service.md"><span class="material-symbols-outlined text-base">chat</span> 06 Chat (SSE)</a>
+        <a class="nav-link" href="docs/architecture/07-lesson-json-schema.md"><span class="material-symbols-outlined text-base">data_object</span> 07 Lesson JSON</a>
+        <a class="nav-link" href="docs/MANAGER_APPROVAL_SUMMARY.md"><span class="material-symbols-outlined text-base">description</span> Manager summary</a>
+        <a class="nav-link" href="db-schema-eraser.md"><span class="material-symbols-outlined text-base">schema</span> DB schema (Eraser)</a>
+      </nav>
+    </aside>
+
+    <main class="flex-1 min-w-0">
+      <header class="border-b border-outline-variant bg-surface/80 backdrop-blur-md sticky top-0 z-10 px-6 py-4">
+        <div class="max-w-4xl mx-auto flex items-center justify-between gap-4">
+          <div>
+            <p class="text-xs text-on-surface-variant mb-1">teacher-mock / architecture</p>
+            <h1 class="text-2xl font-bold text-on-surface">System Overview</h1>
+          </div>
+          <a href="index.html" class="lg:hidden text-sm text-primary">← App</a>
+        </div>
+      </header>
+
+      <article class="doc-prose max-w-4xl mx-auto px-6 py-10" id="content">
+        <p class="text-lg mb-6">
+          This page summarizes the <strong>production</strong> getXplain Teacher Tools architecture and how the
+          <span class="badge badge-mock">UI mock</span> in this repo maps to it.
+          Full reference: <code>/root/code/system_overview.md</code>.
+        </p>
+
+        <h2 id="stack">Production stack</h2>
+        <table>
+          <thead><tr><th>Layer</th><th>Technology</th></tr></thead>
+          <tbody>
+            <tr><td>Frontend</td><td>Next.js (<code>getxplain-ai-teacher-frontend</code>)</td></tr>
+            <tr><td>API</td><td>FastAPI (<code>getxplain-ai-teacher-backend</code>) — REST, MCP, internal API</td></tr>
+            <tr><td>Chat</td><td><code>teacher-chat</code> — Google ADK + SSE (AG-UI)</td></tr>
+            <tr><td>Queues</td><td>SAQ + Redis (4 queues)</td></tr>
+            <tr><td>Workers</td><td>lesson-learner, planner, executer, image-manager</td></tr>
+            <tr><td>Database</td><td>PostgreSQL (<code>lessons.content</code> JSONB canonical)</td></tr>
+            <tr><td>Storage</td><td>S3</td></tr>
+            <tr><td>AI</td><td>Gemini</td></tr>
+            <tr><td>Auth</td><td>WorkOS AuthKit JWT</td></tr>
+          </tbody>
+        </table>
+
+        <h2 id="architecture">High-level architecture</h2>
+        <pre class="mermaid">
+flowchart TB
+  Teacher["Teacher / Org Admin"]
+  Next["Next.js Frontend"]
+  API["teacher-api"]
+  Chat["teacher-chat\nADK + SSE"]
+  PG[(PostgreSQL)]
+  Redis[(Redis SAQ)]
+  S3[(S3)]
+  Learner["lesson-learner"]
+  Planner["planner"]
+  Executer["executer"]
+  Images["image-manager"]
+
+  Teacher --> Next
+  Next -->|REST /v1| API
+  Next -->|SSE AG-UI| Chat
+  Chat -->|MCP /mcp| API
+  API --> PG
+  API --> S3
+  API --> Redis
+  Redis --> Learner
+  Redis --> Planner
+  Redis --> Executer
+  Redis --> Images
+        </pre>
+
+        <h2 id="journey">Product journey</h2>
+        <ol class="list-decimal pl-5 space-y-2 my-4 text-on-surface-variant">
+          <li><strong>Media Library</strong> — upload into nested folders → <code>lesson-learner</code> indexes file → <code>status=indexed</code></li>
+          <li><strong>Chat</strong> — SSE streaming via <code>teacher-chat</code>; agent tools call API via MCP</li>
+          <li><strong>Plan</strong> — teacher clicks Create Lesson Plan → <code>plan_lesson</code> (SAQ)</li>
+          <li><strong>Slides</strong> — Approve &amp; Execute → <code>execute_lesson</code> + <code>image-manager</code></li>
+          <li><strong>Export</strong> — PDF / PPTX when <code>slides_ready</code></li>
+        </ol>
+
+        <h2 id="status">Lesson status lifecycle</h2>
+        <table>
+          <thead><tr><th>Status</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code>chatting</code></td><td>Gathering requirements</td></tr>
+            <tr><td><code>awaiting_plan_approval</code></td><td>Continue chat or create plan</td></tr>
+            <tr><td><code>planning</code></td><td>Plan job running</td></tr>
+            <tr><td><code>awaiting_execute_approval</code></td><td>Plan ready — approve slides</td></tr>
+            <tr><td><code>slides_in_progress</code></td><td>Slides generating</td></tr>
+            <tr><td><code>slides_ready</code></td><td>Done</td></tr>
+            <tr><td><code>failed</code></td><td>Error (retryable)</td></tr>
+          </tbody>
+        </table>
+
+        <h2 id="separation">Critical rule: media ≠ chat</h2>
+        <pre class="mermaid">
+flowchart LR
+  subgraph phase1 [Phase 1 — SAQ]
+    Upload --> Learner["lesson-learner"]
+    Learner --> Store["media indexed"]
+  end
+  subgraph phase2 [Phase 2 — SSE then SAQ]
+    ChatSSE["teacher-chat SSE"] --> Plan["planner"]
+    Plan --> Exec["executer"]
+  end
+  Store -.-> ChatSSE
+        </pre>
+        <p>Files are indexed <em>before</em> chat. Chat only reads stored summaries — never re-parses uploads.</p>
+
+        <h2 id="mock-map">UI mock file map</h2>
+        <p>This repo is a <span class="badge badge-mock">static HTML prototype</span> — <code>localStorage</code> only (seed v<strong>11</strong>).</p>
+        <table>
+          <thead><tr><th>Production</th><th>Mock file</th></tr></thead>
+          <tbody>
+            <tr><td>Next.js app shell</td><td><code>js/layout.js</code> + <code>*.html</code></td></tr>
+            <tr><td>PostgreSQL</td><td><code>js/store.js</code> + <code>js/seed.js</code></td></tr>
+            <tr><td>SSE chat</td><td><code>js/chat.js</code></td></tr>
+            <tr><td>lesson-learner</td><td><code>js/media.js</code> (timers)</td></tr>
+            <tr><td>planner + executer</td><td><code>js/workspace.js</code> (timers)</td></tr>
+            <tr><td>Nested media folders</td><td><code>media.html</code> + <code>folders[]</code></td></tr>
+            <tr><td>Platform admin</td><td><code>admin/*.html</code></td></tr>
+          </tbody>
+        </table>
+
+        <h2 id="mock-pages">Mock pages</h2>
+        <table>
+          <thead><tr><th>File</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td><code>index.html</code></td><td>Home — create lesson, continue recent</td></tr>
+            <tr><td><code>workspace.html</code></td><td>Chat | plan | slides</td></tr>
+            <tr><td><code>media.html</code></td><td>Nested folder media library</td></tr>
+            <tr><td><code>identities.html</code></td><td>Brand kits</td></tr>
+            <tr><td><code>classes.html</code></td><td>Classes CRUD</td></tr>
+            <tr><td><code>lessons.html</code></td><td>Session list</td></tr>
+            <tr><td><code>organization.html</code></td><td>Org admin</td></tr>
+            <tr><td><code>admin/dashboard.html</code></td><td>Platform admin</td></tr>
+          </tbody>
+        </table>
+
+        <h2 id="repos">Repositories</h2>
+        <table>
+          <thead><tr><th>Service</th><th>Repository</th></tr></thead>
+          <tbody>
+            <tr><td>teacher-api</td><td><code>getxplain-ai-teacher-backend</code></td></tr>
+            <tr><td>teacher-frontend</td><td><code>getxplain-ai-teacher-frontend</code></td></tr>
+            <tr><td>teacher-chat</td><td><code>getxplain-ai-teacher-chat</code></td></tr>
+            <tr><td>planner</td><td><code>getxplain-ai-teacher-planner</code></td></tr>
+            <tr><td>executer</td><td><code>getxplain-ai-teacher-excuter</code></td></tr>
+            <tr><td>image-manager</td><td><code>getxplain-ai-teacher-image-manager</code></td></tr>
+            <tr><td>UI mock</td><td><code>teacher-mock</code> (this repo)</td></tr>
+          </tbody>
+        </table>
+
+        <h2 id="run">Run the mock</h2>
+        <pre class="bg-surface-container-low border border-outline-variant rounded-xl p-4 text-sm overflow-x-auto"><code>cd teacher-mock
+python3 -m http.server 5173
+# Open http://localhost:5173/system_overview.html</code></pre>
+      </article>
+    </main>
+  </div>
+
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+
+    // Build TOC from h2 ids
+    const toc = document.getElementById("toc");
+    document.querySelectorAll("#content h2[id]").forEach((h) => {
+      const a = document.createElement("a");
+      a.href = "#" + h.id;
+      a.className = "nav-link";
+      a.textContent = h.textContent;
+      toc.appendChild(a);
+    });
+  </script>
+</body>
+</html>

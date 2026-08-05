@@ -1,8 +1,10 @@
-# Lesson JSON schema (Hetzner)
+# Lesson content JSON schema
 
-Canonical artifact at `lessons.json_url` in the Hetzner bucket.
+Canonical payload: **`lessons.content` JSONB** in PostgreSQL.
 
-**planner_worker** and **executer_worker** both upsert this file.
+Workers patch incrementally via `/v1/internal/lessons/{id}/content/*`. Optional `lessons.json_url` points to an exported artifact in S3.
+
+**planner** and **executer** both read/write this structure.
 
 ---
 
@@ -13,11 +15,12 @@ Canonical artifact at `lessons.json_url` in the Hetzner bucket.
 | `id`, `createdAt` | API on create (immutable) |
 | `updatedAt`, `status`, `title`, `error` | API / chat / planner / executer |
 | `media` | API / chat (snapshotted into JSON) |
-| `plan` | **planner_worker** (reads identity + preferences from DB; does not copy them into JSON) |
-| `pages[].plan` | **planner_worker** (+ teacher uploads / edits via API) |
-| `lesson[]` (HTML per page) | **executer_worker** |
+| `plan` | **planner** (reads identity + preferences from DB; does not copy them into JSON) |
+| `pages[].plan` | **planner** (+ teacher edits via API) |
+| `lesson[]` (HTML per page) | **executer** |
+| `revision` | API / executer (tracks plan or slide revision in progress) |
 
-Identity and preferences stay in Postgres only — not in the Hetzner lesson JSON.
+Identity and preferences stay in Postgres only — not root fields in content JSON.
 
 ---
 
@@ -313,7 +316,7 @@ Root JSON has **no** `identity` or `preferences` objects (those live in DB / `le
 | `image_needed` | boolean | |
 | `image_prompt` | string \| null | AI generate when not uploading |
 | `images_uploaded` | boolean | Teacher uploaded images for this page |
-| `uploaded_images_urls` | string[] | Hetzner URLs |
+| `uploaded_images_urls` | string[] | S3 URLs |
 | `content_blocks` | `{ type, text }[]` | |
 | `estimated_minutes` | number \| null | |
 | `details` | object | **Shape depends on `type`** |
@@ -544,9 +547,10 @@ Root JSON has **no** `identity` or `preferences` objects (those live in DB / `le
 ## Lifecycle
 
 ```text
-1. API creates lesson → skeleton
-2. Chat fills preferences + identity in DB; media snapshotted into JSON
-3. planner_worker → plan (+ global_design_style) + pages with type + details; seeds lesson[]
-4. Teacher may upload images → images_uploaded + uploaded_images_urls on page plan
-5. executer_worker → lesson[].html; root status = slides_ready
+1. API creates lesson → skeleton in lessons.content
+2. Chat fills preferences + identity in DB; media snapshotted into content JSON
+3. planner → plan + pages with type + details; seeds lesson[]
+4. Teacher may upload images → uploaded_images_urls on page plan
+5. image-manager → generated_images_urls where needed
+6. executer → lesson[].html; root status = slides_ready
 ```

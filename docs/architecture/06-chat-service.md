@@ -1,131 +1,164 @@
-# 06 — Chat microservice (real-time, not a worker)
+# 06 — Chat service (real-time SSE, not a worker)
 
-## Why not arq?
+## Why not SAQ?
 
-Chat needs **immediate** replies. Queuing a `chat_turn` job would add latency and feel broken in the UI.
+Chat needs **immediate** streaming replies. Queuing a `chat_turn` job would add latency and feel broken in the UI.
 
-So **chat is a long-running microservice**, not an arq worker.
+So **chat is a long-running microservice** (`teacher-chat`), not an SAQ worker.
 
-- **Frontend ↔ API**: WebSocket (teacher sees messages live)
-- **API ↔ Chat service**: WebSocket (or persistent socket) — API proxies / fans out; chat never talks to the browser directly
-- **describer / planner / executer** stay on **arq** (slow, async jobs)
+- **Frontend ↔ chat**: **SSE** (`POST /agui/run`, AG-UI protocol)
+- **Chat ↔ API**: **MCP** Streamable HTTP (`/mcp`) + internal REST (`/v1/internal`)
+- **lesson-learner / planner / executer / image-manager** stay on **SAQ** (slow, async jobs)
+
+> **No WebSockets** in the production stack.
 
 ## Goal
 
-1. Drive conversation to collect **full requirements**.
-2. Persist every message + structured **user selections** in Postgres (via API or chat→API callbacks).
+1. Drive conversation to collect **full requirements** (checklist).
+2. Persist every message + structured **user selections** in Postgres (via MCP tools / internal API).
 3. When ready, ask: **continue chatting** or **make the plan**.
-4. On **make the plan** → API sets status `planning` and **enqueues** `planner_worker` (arq).
-5. Uses **stored** `media.description` / `media.summary` only — never re-reads the file.
+4. On **make the plan** → API sets status `planning` and **enqueues** planner (SAQ).
+5. Uses **stored** `media.summary` only — never re-reads the file.
 
-## Socket topology
+## Required checklist (before planning)
+
+| Field | Description |
+|-------|-------------|
+| `topic` | Lesson subject/title |
+| `media` | At least 1 indexed file attached |
+| `identity_id` | Brand kit selected |
+| `page_count` | Number of slides (≥ 1) |
+| `duration_minutes` | Lesson length |
+| `homework_style` | `none`, `end`, `per_page`, `group_work`, `assignments` |
+| `image_style` | Visual style for generated images |
+
+When complete → status moves to `awaiting_plan_approval`.
+
+## Socket topology (SSE + MCP)
 
 ```mermaid
 flowchart LR
-  UI["Next.js"] -->|"WebSocket\n/ws/lessons/{id}/chat"| API["FastAPI"]
-  API -->|"WebSocket\ninternal chat channel"| Chat["chat_service\n(microservice)"]
-  Chat --> LLM["LLM / Gemini"]
+  UI["Next.js"] -->|"SSE\n/api/chat/run → /agui/run"| Chat["teacher-chat\nADK LlmAgent"]
+  Chat -->|"MCP Streamable HTTP\n/mcp"| API["teacher-api"]
+  Chat --> LLM["Gemini"]
   API --> PG[(PostgreSQL)]
-  Chat -.->|"optional: read context via API REST"| API
 ```
 
-**Rule:** Browser only opens a socket to the **API**. The API holds the socket to **chat_service**. That keeps auth, tenancy, and DB ownership on the API.
+**Rule:** Browser talks to chat via SSE (proxied through Next.js). Chat calls API tools via MCP. Auth and tenancy stay on the API.
 
-## Message flow (immediate)
+## Message flow (streaming)
 
 ```mermaid
 sequenceDiagram
   autonumber
   actor T as Teacher
   participant UI as Next.js
-  participant API as FastAPI
-  participant Chat as chat_service
+  participant Chat as teacher-chat
+  participant API as teacher-api
   participant PG as PostgreSQL
-  participant R as Redis arq
+  participant R as Redis SAQ
 
   T->>UI: Open lesson workspace
-  UI->>API: REST POST /lessons (if new)
+  UI->>API: REST POST /v1/classes/{id}/lessons (if new)
   API->>PG: status=chatting
-  UI->>API: WebSocket connect /ws/lessons/{id}/chat
-  API->>Chat: WebSocket ensure session for lesson_id
+  T->>UI: Send message
+  UI->>Chat: POST /agui/run (SSE)
+  Chat->>API: MCP append_lesson_message (user)
+  Chat->>API: MCP get_lesson_context
+  Chat->>Chat: ADK LlmAgent + Gemini stream
+  loop TEXT_MESSAGE_CONTENT
+    Chat-->>UI: SSE token delta
+  end
+  Chat->>API: MCP update_lesson_preferences / patch_lesson
+  Chat->>API: MCP append_lesson_message (assistant + meta)
+  Chat-->>UI: SSE RUN_FINISHED (+ lesson_status hint)
 
-  T->>UI: Send message + selections
-  UI->>API: WS user_message
-  API->>PG: INSERT lesson_messages role=user\nUPSERT lesson_preferences
-  API->>Chat: WS forward user_message + context refs
-  Chat->>Chat: Generate reply immediately
-  Chat->>API: WS assistant_message + updated selections + status hint
-  API->>PG: INSERT assistant message\nUPSERT preferences\nUPDATE status if needed
-  API->>UI: WS assistant_message (immediate)
-
-  alt Requirements complete
-    API->>UI: WS status=awaiting_plan_approval\n+ CTA continue | make_plan
+  alt Checklist complete
+    API->>PG: status=awaiting_plan_approval
+    UI-->>T: CTA continue | make_plan
   end
 
   alt Continue chatting
-    UI->>API: WS or REST continue
+    UI->>API: POST /v1/lessons/{id}/continue-chat
     API->>PG: status=chatting
   else Make the plan
-    UI->>API: REST/WS make_plan
+    UI->>API: POST /v1/lessons/{id}/plan
     API->>PG: status=planning
     API->>R: enqueue plan_lesson
-    Note over API,R: Slow work stays on arq — not on chat socket
+    Note over API,R: Slow work on SAQ — not on SSE socket
   end
 ```
 
-## Streaming (optional)
+## ADK agent (production)
 
-```mermaid
-sequenceDiagram
-  participant UI
-  participant API
-  participant Chat
+| Item | Value |
+|------|-------|
+| Framework | Google ADK `LlmAgent` |
+| Model | Gemini (`GEMINI_TEXT_MODEL`) |
+| Tools | MCP on `teacher-api/mcp` |
+| Tool filter | `get_lesson_context`, `append_lesson_message`, `update_lesson_preferences`, `patch_lesson`, `transition_lesson_status` |
+| Grounding | `before_tool_callback` strips ungrounded preference fields |
+| Visible text | Stream + persist strip `<execute_tool>`, tool dumps, and JSON fences — teachers never see machine artifacts |
+| Interaction chips | Required on every question: trailing JSON `interaction` → `message.meta` (quick replies + free text) |
+| Plan CTAs | UI shows **Make plan** / **Skip questions & make plan** / **Continue chatting** when status/checklist allow |
+| History | Postgres `lesson_messages` (rehydrated each turn) |
+| Concurrency | One run per lesson (409 if busy) |
+| Rollback | `ADK_AGENT_ENABLED=false` → legacy `LessonAgent` |
 
-  UI->>API: WS user_message
-  API->>Chat: WS user_message
-  loop Token chunks
-    Chat-->>API: WS token_delta
-    API-->>UI: WS token_delta
-  end
-  Chat-->>API: WS message_complete + selections
-  API-->>UI: WS message_complete
-```
+## AG-UI SSE event types
 
-## What chat_service does vs API
+| Event | Meaning |
+|-------|---------|
+| `RUN_STARTED` | Turn began |
+| `TEXT_MESSAGE_START` | Assistant message started |
+| `TEXT_MESSAGE_CONTENT` | Streaming text delta |
+| `TEXT_MESSAGE_END` | Message complete |
+| `RUN_FINISHED` | Turn done (+ optional `lesson_status`) |
+| `RUN_ERROR` | Failure |
+
+## What teacher-chat does vs API
 
 | Responsibility | Owner |
 |----------------|--------|
 | Auth / lesson access check | API |
-| Persist messages & preferences | API (on each WS event) |
-| LLM reply generation | **chat_service** |
-| Push reply to browser | API → UI WebSocket |
-| Enqueue plan/execute | API → arq |
-| Read media file bytes | Neither (describer only) |
-
-## Stored data (unchanged)
-
-- `lesson_messages` — full transcript  
-- `lesson_preferences` — title, duration, learning_styles, language, grade, identity_id, media_ids, …  
-- Page types (`explain` / `assessment` / `group_work` / `pair_work`) are decided by the **planner** in `pages[].plan`, not preference booleans. 
-
-See [04-database.md](04-database.md).
+| Persist messages & preferences | API (via MCP tools) |
+| LLM reply generation | **teacher-chat** (ADK) |
+| Push reply to browser | chat → UI **SSE** |
+| Enqueue plan/execute | API → SAQ |
+| Read media file bytes | lesson-learner only |
 
 ## Chat vs workers
 
 | Concern | Service | Transport | Immediate? |
 |---------|---------|-----------|------------|
-| Learn upload | `describer_worker` | arq | No |
-| Gather requirements | **`chat_service`** | **WebSocket** | **Yes** |
-| Build plan | `planner_worker` | arq | No |
-| Build slides | `executer_worker` | arq | No |
+| Index upload | lesson-learner | SAQ | No |
+| Gather requirements | **teacher-chat** | **SSE** | **Yes** |
+| Build plan | planner | SAQ | No |
+| Build slides | executer | SAQ | No |
+| AI images | image-manager | SAQ | No |
 
 ## Status transitions from chat
 
 ```mermaid
 stateDiagram-v2
   [*] --> chatting
-  chatting --> chatting: more Q&A over WS
-  chatting --> awaiting_plan_approval: requirements full
+  chatting --> chatting: more Q&A over SSE
+  chatting --> awaiting_plan_approval: checklist complete
   awaiting_plan_approval --> chatting: continue chatting
-  awaiting_plan_approval --> planning: make plan\nAPI enqueues planner via arq
+  awaiting_plan_approval --> planning: make plan\nAPI enqueues planner via SAQ
 ```
+
+## Mock implementation
+
+`js/chat.js` simulates the agent without SSE:
+
+| Mock `agent_step` | Production equivalent |
+|-------------------|----------------------|
+| `topic` | Gather topic |
+| `source` | Attach indexed media |
+| `identity` | Select identity |
+| `details` | Duration, styles, assessment |
+| `confirm` | awaiting_plan_approval CTA |
+| `plan_ready` | awaiting_execute_approval |
+
+Messages are appended to `session.messages[]`. **Create Lesson Plan** never auto-starts — teacher must click the CTA (matches production UX rule).

@@ -2,14 +2,15 @@
 
 ## Goal
 
-1. **planner_worker** — after chat confirms **make plan**, build the slide **PLAN** from stored media text + **lesson preferences**; accept plan edits until teacher approves execute.
-2. **executer_worker** — generate **HTML slides** and write **lesson JSON** (title, status, media, plan, pages, lesson) to Hetzner.
+1. **planner** — after chat confirms **make plan**, build the slide **plan** from stored media summaries + **lesson preferences**; accept plan edits until teacher approves execute.
+2. **executer** — generate **HTML slides** and patch `lessons.content` incrementally (plan, pages, lesson arrays).
+3. **image-manager** — generate AI images for pages where `image_needed=true` and no teacher upload exists.
 
-Chat itself is owned by [`chat_service`](06-chat-service.md) over **WebSockets** (not arq). Media describing is Phase 1 only ([02](02-media-describer-flow.md)).
+Chat itself is owned by [`teacher-chat`](06-chat-service.md) over **SSE** (not SAQ). Media indexing is Phase 1 only ([02](02-media-describer-flow.md)).
 
 ## Prerequisite
 
-- Media already has `description` + `summary`.
+- Media already has `status=indexed` with summary/description.
 - Chat has filled `lesson_preferences` and lesson reached `awaiting_plan_approval` → user chose **make plan**.
 
 ## End-to-end (after chat)
@@ -19,53 +20,61 @@ sequenceDiagram
   autonumber
   actor T as Teacher
   participant UI as Next.js
-  participant API as FastAPI
+  participant API as teacher-api
   participant PG as PostgreSQL
-  participant R as Redis arq
-  participant P as planner_worker
-  participant E as executer_worker
-  participant B as Hetzner Bucket
+  participant R as Redis SAQ
+  participant P as planner
+  participant E as executer
+  participant I as image-manager
 
-  Note over T,B: Chat phase already done — preferences + messages in DB
+  Note over T,I: Chat phase done — preferences + messages in DB
 
-  T->>UI: Make plan
-  UI->>API: POST /lessons/{id}/plan
+  T->>UI: Generate plan
+  UI->>API: POST /v1/lessons/{id}/plan
   API->>PG: status=planning
   API->>R: enqueue plan_lesson(lesson_id)
   API-->>UI: 202
 
   R->>P: plan_lesson
-  P->>PG: Load preferences + media.description/summary + identity
-  Note over P: No file download / no Gemini vision
-  P->>P: Generate plan Global Design Style + Pages
-  P->>PG: Save plan payload status=awaiting_execute_approval
-  P->>B: Optional upsert lesson.json skeleton with status
-  UI->>API: GET plan
+  P->>API: GET /v1/internal/lessons/{id}/context
+  Note over P: Uses media summaries + identity + preferences
+  P->>P: Generate plan (structured JSON)
+  P->>API: PATCH content.plan + content.pages + lesson stubs
+  P->>API: PATCH status=awaiting_execute_approval
+  UI->>API: GET /v1/lessons/{id}?view=progress
   API-->>UI: Plan cards — wait approve
 
   loop Plan edits
-    T->>UI: Edit section
-    UI->>API: POST /lessons/{id}/plan/edit
+    T->>UI: Edit section / @page mention
+    UI->>API: POST /v1/lessons/{id}/plan/edit
     API->>PG: status=planning
     API->>R: enqueue revise_plan
     R->>P: revise_plan
-    P->>PG: Update plan status=awaiting_execute_approval
+    P->>API: PATCH updated plan
+    P->>API: PATCH status=awaiting_execute_approval
   end
 
   T->>UI: Approve and build slides
-  UI->>API: POST /lessons/{id}/execute
+  UI->>API: POST /v1/lessons/{id}/execute
   API->>PG: status=slides_in_progress
   API->>R: enqueue execute_lesson
   API-->>UI: 202
 
   R->>E: execute_lesson
-  E->>PG: Load plan + preferences + identity
-  E->>E: Generate HTML per slide
-  E->>E: Assemble full lesson JSON
-  E->>B: PUT lesson JSON
-  E->>PG: json_url set status=slides_ready
-  UI->>API: GET lesson
-  API-->>UI: Ready
+  E->>API: GET context
+  opt Pages need AI images
+    E->>API: POST .../images/process
+    API->>R: enqueue process_lesson_images
+    R->>I: process_lesson_images
+    I->>API: PATCH generated_images_urls
+  end
+  loop Each page
+    E->>E: Generate branded HTML 1280x720
+    E->>API: PATCH content.lesson/{page_id}
+  end
+  E->>API: PATCH status=slides_ready
+  UI->>API: GET lesson (poll every 2.5s)
+  API-->>UI: Slides ready
 ```
 
 ## Lesson status state machine
@@ -73,137 +82,87 @@ sequenceDiagram
 ```mermaid
 stateDiagram-v2
   [*] --> chatting: create lesson
-  chatting --> awaiting_plan_approval: chat_worker requirements complete
+  chatting --> awaiting_plan_approval: checklist complete
   awaiting_plan_approval --> chatting: continue chatting
   awaiting_plan_approval --> planning: make plan
   planning --> awaiting_execute_approval: plan done
   awaiting_execute_approval --> planning: revise plan
   awaiting_execute_approval --> slides_in_progress: approve execute
-  slides_in_progress --> slides_ready: lesson JSON written
+  slides_in_progress --> slides_ready: all slides ready
+  slides_ready --> slides_in_progress: revise slides
   planning --> failed
   slides_in_progress --> failed
-  failed --> chatting
   failed --> planning
   failed --> slides_in_progress
   slides_ready --> [*]
 ```
 
-| Status | Owner | UI |
-|--------|-------|-----|
-| `chatting` | chat_service (WS) | Chat panel |
-| `awaiting_plan_approval` | chat_service / API | Continue vs Make plan |
-| `planning` | planner_worker | Progress |
-| `awaiting_execute_approval` | API / teacher | Plan cards + Approve |
-| `slides_in_progress` | executer_worker | Building slides |
+| Status | Owner | UI (mock) |
+|--------|-------|-----------|
+| `chatting` | teacher-chat (SSE) | Chat panel |
+| `awaiting_plan_approval` | teacher-chat / API | Continue vs Create Lesson Plan |
+| `planning` | planner | Progressive plan cards |
+| `awaiting_execute_approval` | API / teacher | Plan cards + Approve & Execute |
+| `slides_in_progress` | executer + image-manager | Building slides |
 | `slides_ready` | — | View / export lesson |
 | `failed` | — | Retry |
 
-## planner_worker
+## planner
 
 ```mermaid
 flowchart TB
-  Job([plan_lesson / revise_plan]) --> In["Inputs from DB:\npreferences (title duration grade…)\nmedia.description/summary\nidentity\nchat history optional"]
-  In --> Plan["PLAN: Global Design Style +\nPages with type + details"]
-  Plan --> Store["Persist plan\nstatus = awaiting_execute_approval"]
+  Job([plan_lesson / revise_plan]) --> In["Inputs from context:\npreferences topic duration page_count…\nmedia summaries\nidentity\nchat history"]
+  In --> Plan["PLAN: overview + pages[]\ntype layout_template content_blocks"]
+  Plan --> Store["PATCH content\nstatus = awaiting_execute_approval"]
 ```
 
-## executer_worker + lesson JSON
+**Page types:** `explain` | `assessment` | `group_work` | `pair_work`
+
+**Layout templates:** `title_hero` | `split_image` | `two_column` | `timeline` | `quote_focus` | `assessment_cards` | `full_bleed_visual`
+
+## executer + lesson content
 
 ```mermaid
 flowchart TB
-  Job([execute_lesson]) --> Load["plan + preferences + identity"]
-  Load --> Slides["HTML per slide"]
-  Slides --> Bundle["lesson.json"]
-  Bundle --> Upload["Hetzner PUT"]
-  Upload --> DB["lessons.json_url\nstatus = slides_ready"]
+  Job([execute_lesson / revise_slide]) --> Load["plan + preferences + identity"]
+  Load --> Slides["HTML per slide\nbranded 1280x720"]
+  Slides --> Patch["PATCH lessons.content\nincrementally per page"]
+  Patch --> DB["status = slides_ready"]
 ```
 
-### `lesson.json` shape (bucket)
+Canonical JSON shape: **[07-lesson-json-schema.md](07-lesson-json-schema.md)**.
 
-Full schema + examples: **[07-lesson-json-schema.md](07-lesson-json-schema.md)**.
-
-Planner writes `plan` + each `pages[].plan` (`html` stays `null`).  
-Executer fills each `pages[].html` and sets page/root status to ready.
-
-Minimal shape:
-
-```json
-{
-  "id": "les_…",
-  "title": "…",
-  "status": "slides_ready",
-  "createdAt": "…",
-  "updatedAt": "…",
-  "createdBy": "…",
-  "classId": "…",
-  "error": null,
-  "media": [],
-  "plan": {
-    "version": 1,
-    "overview": "…",
-    "global_design_style": {
-      "identity": "…",
-      "primary_color": "#7B4DFF",
-      "secondary_color": "#F5A623",
-      "typography": { "name": "Nunito", "url": "…" },
-      "visual_style": "Realistic images",
-      "background": "Simple white",
-      "rules": "…"
-    }
-  },
-  "pages": [
-    {
-      "id": "page_01",
-      "index": 1,
-      "title": "…",
-      "status": "planned",
-      "plan": {
-        "type": "explain",
-        "summary": "…",
-        "image_needed": true,
-        "image_prompt": "…",
-        "images_uploaded": false,
-        "uploaded_images_urls": [],
-        "content_blocks": [],
-        "details": {
-          "key_points": [],
-          "examples": [],
-          "misconceptions_to_address": []
-        }
-      }
-    }
-  ],
-  "lesson": [
-    {
-      "page_id": "page_01",
-      "index": 1,
-      "title": "…",
-      "status": "ready",
-      "html": "<section>…</section>"
-    }
-  ]
-}
-```
-
-- **`pages[].plan.type`**: `explain` | `assessment` | `group_work` | `pair_work`  
-- **`pages[].plan.details`**: shape depends on `type` (questions for assessment, roles/task for group_work, etc.)  
-- **`lesson`**: HTML per page with status (executer), linked by `page_id`
+- **`pages[].plan`** = pedagogical outline (planner writes)
+- **`lesson[].html`** = rendered HTML (executer writes)
+- Identity/preferences stay in Postgres — not root fields in content JSON
 
 ## How API fires queues
 
 ```mermaid
 flowchart LR
-  subgraph triggers [REST / WS triggers]
-    A["POST /media/{id}/complete"] --> Q1["describe_media"]
-    B["WS make_plan / POST .../plan"] --> Q3["plan_lesson"]
-    C["POST /lessons/{id}/plan/edit"] --> Q4["revise_plan"]
-    D["POST /lessons/{id}/execute"] --> Q5["execute_lesson"]
+  subgraph triggers [REST triggers]
+    A["POST /v1/media/{id}/complete"] --> Q1["learn_media"]
+    B["POST /v1/lessons/{id}/plan"] --> Q2["plan_lesson"]
+    C["POST /v1/lessons/{id}/plan/edit"] --> Q3["revise_plan"]
+    D["POST /v1/lessons/{id}/execute"] --> Q4["execute_lesson"]
+    E["POST .../slides/{page_id}/revise"] --> Q5["revise_slide"]
+    F["POST .../images/process"] --> Q6["process_lesson_images"]
   end
 
-  Q1 --> Describer
+  Q1 --> Learner[lesson-learner]
+  Q2 --> Planner[planner]
   Q3 --> Planner
-  Q4 --> Planner
+  Q4 --> Executer[executer]
   Q5 --> Executer
+  Q6 --> Images[image-manager]
 ```
 
-> Chat messages travel on WebSockets (see [06](06-chat-service.md)), not through this queue diagram.
+> Chat messages travel on **SSE** (see [06](06-chat-service.md)), not through this queue diagram.
+
+## Mock implementation
+
+`js/workspace.js` + `js/chat.js`:
+
+- **Create Lesson Plan** → `phase=generating_plan` → progressive plan cards (`plan_gen`)
+- **Approve & Execute** → `phase=building` → slide placeholders fill in with timers
+- **Export** → mock PDF/PPTX download toast

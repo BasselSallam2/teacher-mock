@@ -1,64 +1,79 @@
 # 05 — Queue jobs & cross-service sequences
 
-## arq job catalog
+## SAQ job catalog
 
-Chat is **not** an arq job — see [06-chat-service.md](06-chat-service.md) (WebSockets).
+Chat is **not** an SAQ job — see [06-chat-service.md](06-chat-service.md) (SSE).
 
 ```mermaid
 flowchart TB
-  subgraph api [FastAPI enqueues — async only]
-    J1["describe_media(media_id)"]
-    J3["plan_lesson(lesson_id)"]
-    J4["revise_plan(lesson_id, edit_payload)"]
-    J5["execute_lesson(lesson_id)"]
+  subgraph api [teacher-api enqueues — async only]
+    J1["learn_media(media_id)"]
+    J2["plan_lesson(lesson_id)"]
+    J3["revise_plan(lesson_id, edit_payload)"]
+    J4["execute_lesson(lesson_id)"]
+    J5["revise_slide(lesson_id, page_id, prompt)"]
+    J6["process_lesson_images(lesson_id, page_ids)"]
   end
 
-  subgraph workers [arq consumers]
-    D["describer_worker"]
-    P["planner_worker"]
-    E["executer_worker"]
+  subgraph queues [SAQ queues]
+    Q1["teacher-lesson-learner"]
+    Q2["teacher-lesson-planner"]
+    Q3["teacher-lesson-executer"]
+    Q4["teacher-image-manager"]
   end
 
-  J1 --> D
-  J3 --> P
-  J4 --> P
-  J5 --> E
+  subgraph workers [SAQ consumers]
+    L["lesson-learner"]
+    P["planner"]
+    E["executer"]
+    I["image-manager"]
+  end
+
+  J1 --> Q1 --> L
+  J2 --> Q2 --> P
+  J3 --> Q2 --> P
+  J4 --> Q3 --> E
+  J5 --> Q3 --> E
+  J6 --> Q4 --> I
 ```
 
 ## Job → side effects
 
 | Job | Worker | Reads | Writes |
 |-----|--------|-------|--------|
-| `describe_media` | describer | Hetzner file | `media.description`, `media.summary` |
-| `plan_lesson` | planner | preferences + media text + identity | plan payload, status `awaiting_execute_approval` |
+| `learn_media` | lesson-learner | S3 file | `media.description`, `media.summary`, `status=indexed` |
+| `plan_lesson` | planner | context (prefs + media + identity) | `content.plan`, `content.pages`, status `awaiting_execute_approval` |
 | `revise_plan` | planner | plan + edit | updated plan |
-| `execute_lesson` | executer | plan + preferences + identity (from DB) | lesson JSON (no identity/preferences roots), `json_url`, `slides_ready` |
+| `execute_lesson` | executer | plan + prefs + identity | `content.lesson[]` HTML, status `slides_ready` |
+| `revise_slide` | executer | page HTML + prompt | patched slide HTML |
+| `process_lesson_images` | image-manager | image prompts | `generated_images_urls`, `images_status` |
 
 | Real-time | Service | Transport |
 |-----------|---------|-----------|
-| Chat turns | `chat_service` | Frontend ↔ API WS ↔ chat_service WS |
+| Chat turns | teacher-chat | Frontend ↔ chat **SSE** (AG-UI); chat ↔ API **MCP** |
 
 ## Full happy path
 
 ```mermaid
 flowchart TB
-  subgraph phase1 [Phase 1 — arq]
-    U1["Upload → Hetzner"] --> U2["describe_media"]
-    U2 --> U3["description + summary stored"]
+  subgraph phase1 [Phase 1 — SAQ]
+    U1["Upload → S3"] --> U2["learn_media"]
+    U2 --> U3["summary stored status=indexed"]
   end
 
-  subgraph phase2a [Phase 2a — WebSocket]
-    L1["lesson status=chatting"] --> L2["WS chat via API ↔ chat_service"]
+  subgraph phase2a [Phase 2a — SSE]
+    L1["lesson status=chatting"] --> L2["SSE chat ADK + MCP"]
     L2 --> L3["awaiting_plan_approval"]
     L3 --> L4{"Continue or Make plan?"}
     L4 -->|continue| L2
   end
 
-  subgraph phase2b [Phase 2b — arq again]
+  subgraph phase2b [Phase 2b — SAQ again]
     L4 -->|make plan| L5["planning → plan_lesson"]
     L5 --> L6["awaiting_execute_approval"]
     L6 --> L7["slides_in_progress → execute_lesson"]
-    L7 --> L8["slides_ready + lesson.json"]
+    L7 --> L8["image-manager if needed"]
+    L8 --> L9["slides_ready"]
   end
 
   U3 -.-> L1
@@ -68,57 +83,66 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-  subgraph API_owns [API]
-    Schema["DB"]
-    REST["REST"]
-    WS["WS gateway to browsers"]
-    Dispatch["Enqueue arq"]
+  subgraph API_owns [teacher-api]
+    Schema["DB + content JSONB"]
+    REST["REST /v1"]
+    MCP["MCP /mcp"]
+    Internal["/v1/internal"]
+    Dispatch["Enqueue SAQ"]
   end
 
-  subgraph Chat_owns [chat_service]
-    Reply["Immediate LLM replies"]
+  subgraph Chat_owns [teacher-chat]
+    ADK["ADK LlmAgent SSE"]
   end
 
-  subgraph Describer_owns [describer_worker]
-    Parse["Parse file"]
+  subgraph Learner_owns [lesson-learner]
+    Index["Index file"]
   end
 
-  subgraph Planner_owns [planner_worker]
+  subgraph Planner_owns [planner]
     PlanGen["Plan"]
   end
 
-  subgraph Executer_owns [executer_worker]
-    Html["Slides + JSON"]
+  subgraph Executer_owns [executer]
+    Html["Slides HTML"]
   end
 
-  WS <-->|"socket"| Chat_owns
-  Dispatch --> Describer_owns
+  subgraph Images_owns [image-manager]
+    GenImg["AI images"]
+  end
+
+  ADK -->|MCP| API_owns
+  Dispatch --> Learner_owns
   Dispatch --> Planner_owns
   Dispatch --> Executer_owns
+  Dispatch --> Images_owns
 ```
 
 ## API surface (illustrative)
 
 ```mermaid
 flowchart TB
-  subgraph ChatWS ["WS /ws/lessons/{id}/chat"]
-    live["user_message / assistant_message / token_delta"]
+  subgraph ChatSSE ["SSE /agui/run via /api/chat/run"]
+    live["RUN_STARTED TEXT_MESSAGE_CONTENT RUN_FINISHED"]
   end
 
-  subgraph LessonsAPI ["/lessons"]
+  subgraph LessonsAPI ["/v1/lessons"]
     create["POST create status=chatting"]
-    plan["POST .../plan → arq plan_lesson"]
-    edit["POST .../plan/edit"]
-    execute["POST .../execute → arq execute_lesson"]
-    get["GET lesson + json_url"]
+    plan["POST .../plan → SAQ plan_lesson"]
+    edit["POST .../plan/edit → revise_plan"]
+    execute["POST .../execute → execute_lesson"]
+    revise["POST .../slides/{page_id}/revise"]
+    get["GET lesson ?view=progress"]
+    export["POST .../export"]
   end
 
-  subgraph MediaAPI ["/media"]
-    complete["POST .../complete → describe_media"]
+  subgraph MediaAPI ["/v1/media"]
+    upload["POST create + signed URL"]
+    complete["POST .../complete → learn_media"]
   end
 ```
 
-## Failure & retry (arq only)
+## Failure & retry (SAQ)
 
 ```mermaid
 sequenceDiagram
@@ -127,10 +151,10 @@ sequenceDiagram
   participant Worker
   participant PG
 
-  API->>Redis: enqueue job
+  API->>Redis: enqueue job (unique key)
   Redis->>Worker: deliver
   alt success
-    Worker->>PG: status + payload
+    Worker->>PG: PATCH content + status
   else transient
     Worker-->>Redis: retry backoff
   else permanent
@@ -138,20 +162,21 @@ sequenceDiagram
   end
 ```
 
-## SAQ queue monitor (production teacher-api)
+### Stuck-job recovery
 
-The live teacher stack uses **SAQ** (not Bull Board). The built-in web UI is mounted on teacher-api:
+teacher-api runs a background loop (~60s) that re-enqueues lessons stuck in `planning` or `slides_in_progress` beyond configurable timeouts (default 180s).
+
+## SAQ queue monitor
 
 | Item | Value |
 |------|--------|
-| UI path | `/queues` (e.g. `https://teachers.api.dev.getxplain.ai/queues`) |
-| Health | `GET /queues/health` — queue names, Redis URL presence, connectivity |
+| UI path | `/queues` on teacher-api |
+| Health | `GET /queues/health` |
 | Env | `REDIS_URL`, `PLANNER_REDIS_URL`, `EXECUTER_REDIS_URL`, `IMAGE_MANAGER_REDIS_URL` |
 | Disable | `QUEUE_MONITOR_ENABLED=false` |
 
-If the UI is blank or 404:
+Queue names: `teacher-lesson-learner`, `teacher-lesson-planner`, `teacher-lesson-executer`, `teacher-image-manager`.
 
-1. Confirm all four Redis URLs are set in the teacher-api ConfigMap.
-2. Pass **nginx basic auth** on the API ingress (same as other API routes).
-3. Check `GET /queues/health` for `queue_count` and per-queue `connectivity`.
-4. Ensure workers use matching queue names: `teacher-lesson-planner`, `teacher-lesson-executer`, etc.
+## Mock equivalent
+
+No real queue — `js/media.js`, `js/chat.js`, and `js/workspace.js` use `setTimeout` / `async` delays to simulate worker progress. UI polls via `xplain:store` custom events (`js/store.js`).

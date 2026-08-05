@@ -1,14 +1,22 @@
 # 04 — PostgreSQL database
 
-Base schema from Eraser, extended for **chat messages**, **lesson preferences**, and the new **lesson status** enum. Lookup tables (`grades`, `curriculums`, `backgrounds`, `image_styles`) are dropdown-only. Binaries live in Hetzner.
+Base schema from `db-schema-eraser.md`, extended for **chat messages**, **lesson preferences**, **nested media folders**, and the **lesson status** enum. Lookup tables (`grades`, `curriculums`, `backgrounds`, `image_styles`) are dropdown-only. Binaries live in S3.
+
+**Canonical lesson payload:** `lessons.content` JSONB (see [07-lesson-json-schema.md](07-lesson-json-schema.md)). Optional `json_url` for export artifacts.
 
 ## Entity-relationship diagram
 
 ```mermaid
 erDiagram
   ORGANIZATIONS ||--o{ USERS : has
-  USERS ||--o{ MEDIA_FOLDERS : creates
+  ORGANIZATIONS ||--o{ MEDIA_FOLDERS : owns
+  ORGANIZATIONS ||--o{ MEDIA : owns
+  ORGANIZATIONS ||--o{ CLASSES : owns
+  ORGANIZATIONS ||--o{ IDENTITIES : owns
+  ORGANIZATIONS ||--o{ LESSONS : owns
+  MEDIA_FOLDERS ||--o{ MEDIA_FOLDERS : "parent_id"
   MEDIA_FOLDERS ||--o{ MEDIA : contains
+  USERS ||--o{ MEDIA_FOLDERS : creates
   USERS ||--o{ MEDIA : uploads
   USERS ||--o{ LESSONS : creates
   CLASSES ||--o{ LESSONS : "used by"
@@ -40,6 +48,8 @@ erDiagram
 
   MEDIA_FOLDERS {
     string id PK
+    string organization_id FK
+    string parent_id FK "nullable"
     string name
     string slug
     string created_by FK
@@ -49,14 +59,18 @@ erDiagram
 
   MEDIA {
     string id PK
+    string organization_id FK
     string folder_id FK
     string uploaded_by FK
+    string status
     text description
     text summary
     string file_name
     string file_url
     string mime_type
     int file_size
+    int pages_number "nullable"
+    text error "nullable"
     datetime created_at
     datetime updated_at
   }
@@ -89,6 +103,7 @@ erDiagram
 
   CLASSES {
     string id PK
+    string organization_id FK
     string name
     string grade
     string curriculum
@@ -97,14 +112,17 @@ erDiagram
 
   LESSONS {
     string id PK
+    string organization_id FK
     string title
-    string createdBy FK
+    string created_by FK
+    string class_id FK
+    string identity_id FK "nullable"
+    string status
+    jsonb content
+    string json_url "nullable export"
+    json plan_payload "nullable legacy"
     datetime created_at
     datetime updated_at
-    string json_url
-    string class FK
-    string status "see status enum"
-    json plan_payload "optional planner output"
   }
 
   LESSON_MESSAGES {
@@ -136,6 +154,7 @@ erDiagram
 
   IDENTITIES {
     string id PK
+    string organization_id FK
     string name
     string primary_color
     string secondary_color
@@ -150,7 +169,7 @@ erDiagram
 
 ## Lesson status enum
 
-Stored on `lessons.status` (and mirrored in lesson JSON):
+Stored on `lessons.status` (mirrored in `lessons.content.status`):
 
 | Value | Meaning |
 |-------|---------|
@@ -159,19 +178,48 @@ Stored on `lessons.status` (and mirrored in lesson JSON):
 | `planning` | Plan creation in progress |
 | `awaiting_execute_approval` | Plan done; wait approve to build slides |
 | `slides_in_progress` | Slides generating |
-| `slides_ready` | Slides + lesson JSON done |
+| `slides_ready` | Slides done |
 | `failed` | Error |
+
+## Media status enum
+
+| Value | Meaning |
+|-------|---------|
+| `uploading` | Upload in progress |
+| `processing` | lesson-learner job running |
+| `indexed` | Ready for lesson attachment |
+| `failed` | Error (`media.error` set) |
+
+## Nested media folders
+
+| Concept | Rule |
+|---------|------|
+| Root | `media_folders.parent_id IS NULL` |
+| Children | `WHERE parent_id = :folder_id` |
+| Upload | Always into a folder — `media.folder_id NOT NULL` |
+| Delete | Block if child folders or media exist (mock matches this) |
+| Slug | `UNIQUE (organization_id, parent_id, slug)` |
+
+```mermaid
+flowchart TD
+  root["My Drive parent_id null"]
+  root --> folderA["Grade 8 - Set A"]
+  folderA --> sub["Unit 1 - Intro to AI"]
+  folderA --> visuals["Visuals"]
+  sub --> files["media.folder_id = Unit 1"]
+```
 
 ## Relationship summary
 
 ```mermaid
 flowchart LR
   users -->|"organization_id"| organizations
+  media_folders -->|"parent_id"| media_folders
   media_folders -->|"created_by"| users
   media -->|"folder_id"| media_folders
   media -->|"uploaded_by"| users
-  lessons -->|"createdBy"| users
-  lessons -->|"class"| classes
+  lessons -->|"created_by"| users
+  lessons -->|"class_id"| classes
   identities -->|"typography"| fonts
   lesson_messages -->|"lesson_id"| lessons
   lesson_preferences -->|"lesson_id"| lessons
@@ -184,31 +232,34 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-  Messages["lesson_messages\nfull transcript"] --> ChatUX["Replay chat UI"]
-  Prefs["lesson_preferences\nstructured answers"] --> Planner["planner_worker input"]
-  Prefs --> Design["Feeds plan.global_design_style\n(not copied as root JSON fields)"]
+  Messages["lesson_messages\nfull transcript + meta chips"] --> ChatUX["Replay chat UI"]
+  Prefs["lesson_preferences\nchecklist fields"] --> Planner["planner input"]
+  Prefs --> Design["Feeds plan visual theme\n(not copied as root JSON fields)"]
 ```
 
-- **Messages** = conversational history (audit + UI).
-- **Preferences** = normalized selections (title, duration, grade, identity_id, …) used by planner/executer from DB — **not** stored as root fields in lesson JSON.
-- **Page activity types** (`explain` | `assessment` | `group_work` | `pair_work` + `details`) live in the lesson plan JSON, not as preference booleans.
+- **Messages** = conversational history (audit + UI + interaction chips in `meta`).
+- **Preferences** = normalized checklist used by planner/executer from DB.
+- **Page activity types** live in `content.pages[].plan.type`, not preference booleans.
 
 ## Dropdown-only catalogs
 
 ```mermaid
 flowchart TB
-  subgraph catalogs [Catalog tables]
+  subgraph catalogs [Catalog tables — platform admin]
     grades
     curriculums
     backgrounds
     image_styles
+    fonts
   end
 
-  classes -.->|"grade / curriculum as strings"| grades
+  classes -.->|"grade / curriculum strings"| grades
   classes -.-> curriculums
-  identities -.->|"background / image_style as strings"| backgrounds
+  identities -.->|"background / image_style strings"| backgrounds
   identities -.-> image_styles
 ```
+
+Mock: `js/seed.js` → `grades`, `curriculums`, `backgrounds`, `image_styles`, `fonts`; managed in `admin/catalogs.html`.
 
 ## Where binaries live
 
@@ -216,16 +267,32 @@ flowchart TB
 flowchart TB
   subgraph postgres [PostgreSQL]
     media_meta["media.file_url description summary"]
-    lesson_meta["lessons.json_url status plan_payload"]
+    lesson_meta["lessons.content JSONB\nlessons.json_url optional"]
     chat["lesson_messages lesson_preferences"]
   end
 
-  subgraph hetzner [Hetzner]
-    files["PDF DOC PPT images"]
-    lessonJson["lesson JSON"]
-    logos["identity logos"]
+  subgraph s3 [S3]
+    files["PDF DOC PPT images logos"]
+    exports["PDF PPTX exports"]
   end
 
   media_meta --> files
-  lesson_meta --> lessonJson
+  lesson_meta --> exports
 ```
+
+## Mock data model (`js/seed.js` + `js/store.js`)
+
+| Postgres table | Mock key |
+|----------------|----------|
+| `organizations` | `state.organizations` |
+| `users` | `state.users` |
+| `media_folders` | `state.folders` (with `parent_id`) |
+| `media` | `state.media` |
+| `identities` | `state.identities` |
+| `classes` | `state.classes` |
+| `lessons` | `state.lessons` |
+| `lesson_messages` + preferences | `state.sessions[]` (embedded) |
+| Catalogs | `grades`, `curriculums`, etc. |
+| Platform admins | `state.platformAdmins` |
+
+Persisted under `localStorage` key `xplain-teacher-mock-v1` (seed `version: 11`).

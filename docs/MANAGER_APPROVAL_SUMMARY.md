@@ -1,8 +1,8 @@
 # getXplain Teacher Tools — System Summary for Approval
 
-**Purpose of this document:** End-to-end overview of the proposed Teacher Tools product and technical design, for management approval before build.
+**Purpose of this document:** End-to-end overview of the Teacher Tools product and technical design, for management approval.
 
-**Status:** Architecture + clickable UI mock completed. Production build not started.
+**Status:** Architecture docs + clickable UI mock completed. Production services exist across `getxplain-ai-teacher-*` repos.
 
 ---
 
@@ -12,11 +12,12 @@ A **Teacher Tools** product that helps teachers (and school admins) turn uploade
 
 Teachers will:
 
-1. Upload source materials (PDF / Word / PowerPoint).
-2. Let the system **read and summarize** those files once.
-3. Chat with an assistant to set lesson requirements (topic, duration, pair work, identity/branding, etc.).
+1. Upload source materials (PDF / Word / PowerPoint) into a **nested Media Library**.
+2. Let the system **index and summarize** those files once (`lesson-learner`).
+3. Chat with an assistant to set lesson requirements (topic, duration, identity/branding, page count, etc.).
 4. Review and approve a **lesson plan**.
-5. Generate **finished slides** packaged as a structured lesson file.
+5. Generate **finished slides** as branded HTML, with optional AI images.
+6. Export PDF / PPTX when ready.
 
 A separate **platform admin** area manages schools (organizations), teachers, and dropdown catalogs (grades, curriculums, fonts, etc.).
 
@@ -38,34 +39,32 @@ Signup: if email domain matches a registered school → confirm join; otherwise 
 
 ### Phase A — Prepare materials (Media Library)
 
-1. Teacher uploads a file (PDF / DOC / PPT, **max 10 pages**).
-2. File is stored in **Hetzner object storage**.
-3. A background **describer** service:
-   - Extracts text as-is.
-   - Sends page images to **Gemini** for description when needed.
-   - Builds per-page description + summary, then merges into **one file description + summary**.
-4. Results are saved in the database on the media record.
+1. Teacher uploads a file into a folder (PDF / DOC / PPT).
+2. File is stored in **S3** (or local dev storage).
+3. Background **lesson-learner** worker indexes the file → description + summary.
+4. Media `status` becomes `indexed`.
 
-**Important rule:** File reading/analysis is **not** part of chat. Files are prepared first; chat later only uses the stored summary/description.
+**Important rule:** File indexing is **not** part of chat. Files are prepared first; chat later only uses stored summaries.
 
-### Phase B — Chat for requirements (real-time)
+### Phase B — Chat for requirements (real-time SSE)
 
-5. Teacher starts a new lesson and attaches ready media + branding (identity).
-6. A dedicated **chat service** talks to the teacher in real time (WebSockets) to collect requirements and preferences (topic, duration, grade, learning styles, language, identity, media).
-7. Every chat message and every structured selection is stored in the database.
-8. When requirements are complete, the system asks: **Continue chatting** or **Make the plan**.
+5. Teacher starts a new lesson and attaches indexed media + branding (identity).
+6. **teacher-chat** (Google ADK agent + MCP tools) talks to the teacher via **SSE** (AG-UI protocol).
+7. Every chat message and structured selection is stored in Postgres.
+8. When the checklist is complete, status becomes `awaiting_plan_approval` — teacher chooses **Continue chatting** or **Create Lesson Plan**.
 
-### Phase C — Plan (async job)
+### Phase C — Plan (async SAQ job)
 
-9. If the teacher chooses **Make the plan**, status becomes `planning`.
-10. A **planner** worker builds the slide plan (global design style + pages). Each page has a **`type`** (`explain` | `assessment` | `group_work` | `pair_work`) and type-specific **`details`** (e.g. assessment questions with MCQ/matching options).
-11. Status becomes `awaiting_execute_approval`. Teacher can edit the plan or approve.
+9. **Make plan** → status `planning`, enqueue `plan_lesson`.
+10. **planner** worker builds the slide plan (pages with `type`, `layout_template`, `content_blocks`, `details`).
+11. Status becomes `awaiting_execute_approval`. Teacher can edit the plan (`revise_plan`) or approve.
 
-### Phase D — Slides (async job)
+### Phase D — Slides (async SAQ jobs)
 
-12. On approve, status becomes `slides_in_progress`.
-13. An **executer** worker generates each slide as HTML and writes one **lesson JSON** to Hetzner.
-14. Status becomes `slides_ready`. Teacher can view/export the lesson.
+12. On approve → status `slides_in_progress`, enqueue `execute_lesson`.
+13. **image-manager** generates AI images where needed.
+14. **executer** generates each slide as HTML (1280×720), patching `lessons.content` incrementally.
+15. Status becomes `slides_ready`. Teacher can view, revise per-page, and export.
 
 ### Lesson status lifecycle
 
@@ -81,57 +80,59 @@ Signup: if email domain matches a registered school → confirm join; otherwise 
 
 ---
 
-## 4. What’s inside the final lesson file
+## 4. What's inside the lesson content JSON
 
-The lesson JSON stored in Hetzner includes at least:
+Stored in Postgres `lessons.content` JSONB:
 
 - Lesson **title** and **status**
-- Attached **media** (ids + description/summary snapshots)
-- The **plan** (including `global_design_style` derived from identity; pages with `type` + `details`)
-- Array of **slides** (`lesson[]` with HTML)
+- Attached **media** (ids + summary snapshots)
+- The **plan** (overview, learning objectives, visual theme)
+- **pages[]** with per-page `plan` (`type` + `details`)
+- **lesson[]** with HTML per page
+- Optional **revision** tracker during edits
 
-Identity and preferences stay in the database; they are inputs to planner/executer, not fields in the bucket JSON.
-
-The same status is tracked in the database and mirrored in that JSON.
+Identity and preferences stay in the database — inputs to planner/executer, not root JSON fields.
 
 ---
 
-## 5. Technical architecture (proposed)
+## 5. Technical architecture
 
 | Layer | Choice | Why |
 |-------|--------|-----|
 | Frontend | **Next.js** | Modern teacher/admin UI |
-| Main API | **Python FastAPI** | REST + WebSocket gateway; owns DB schema and security |
-| Chat | **`chat_service` microservice** | Immediate replies over WebSocket (not a background queue) |
-| Background jobs | **arq + Redis** | Slow work: file describe, plan, slides |
-| Database | **PostgreSQL** | Users, orgs, media metadata, chat, lessons, catalogs |
-| Files | **Hetzner bucket** | All uploads, logos, lesson JSON |
-| AI | **Gemini API** | Image description in describer; chat LLM as needed |
+| Main API | **teacher-api** (FastAPI) | REST + MCP + internal API; owns DB |
+| Chat | **teacher-chat** (ADK + SSE) | Streaming requirements chat (AG-UI) |
+| Background jobs | **SAQ + Redis** | Slow work: index, plan, slides, images |
+| Database | **PostgreSQL** | Users, orgs, media, chat, `lessons.content` |
+| Files | **S3** | Uploads, logos, slide images, exports |
+| AI | **Gemini** | Chat, plan, slides, images, indexing |
+| Auth | **WorkOS AuthKit** | JWT for teacher UI |
 
 ### Services
 
 | Service | Type | Responsibility |
 |---------|------|----------------|
-| **API** | Always on | Auth, CRUD, WebSocket to browser, enqueue jobs, DB ownership |
-| **chat_service** | Always on | Real-time requirement gathering |
-| **describer_worker** | Queue worker | Learn uploaded files → description + summary |
-| **planner_worker** | Queue worker | Create / revise lesson plan |
-| **executer_worker** | Queue worker | Generate HTML slides + lesson JSON |
+| **teacher-api** | Always on | Auth, CRUD, MCP tools, enqueue jobs, DB ownership |
+| **teacher-chat** | Always on | Real-time requirement gathering (SSE + ADK) |
+| **lesson-learner** | Queue worker | Index uploads → description + summary |
+| **planner** | Queue worker | Create / revise lesson plan |
+| **executer** | Queue worker | Generate HTML slides + revisions |
+| **image-manager** | Queue worker | AI images for slides |
 
 ### Real-time chat path
 
 ```
-Teacher browser  ←WebSocket→  API  ←WebSocket→  chat_service
-                                  ↓
-                             PostgreSQL
+Teacher browser  ──SSE──►  teacher-chat  ──MCP──►  teacher-api
+                                              ↓
+                                         PostgreSQL
 ```
-
-Browser never talks to chat_service directly (auth and tenancy stay on the API).
 
 ### Async path (file / plan / slides)
 
 ```
-API  →  Redis (arq)  →  describer / planner / executer workers
+teacher-api  →  Redis (SAQ)  →  lesson-learner / planner / executer / image-manager
+                                      ↓
+                              PATCH /v1/internal/lessons/{id}
 ```
 
 ---
@@ -140,51 +141,31 @@ API  →  Redis (arq)  →  describer / planner / executer workers
 
 - **Organizations** (name, email domains, logo)
 - **Users** (teachers / org admins, linked to org)
-- **Media folders & media** (file URL in Hetzner + description/summary)
-- **Classes**, **identities**, **lessons**
+- **Media folders** (nested `parent_id`) **& media** (S3 URL + summary, `status`)
+- **Classes**, **identities**, **lessons** (`content` JSONB)
 - **Lesson chat messages** + **lesson preferences**
-- **Catalogs** (dropdowns only): grades, curriculums, backgrounds, image styles, fonts
-
-Platform admin can manage organizations, teachers, and those catalogs.
+- **Catalogs** (dropdowns): grades, curriculums, backgrounds, image styles, fonts
 
 ---
 
-## 7. What already exists vs what we need to build
+## 7. What exists today
 
 | Item | Status |
 |------|--------|
-| Clickable **UI mock** (teacher app + platform admin) | Done (localStorage prototype) |
-| Architecture docs + Mermaid diagrams | Done (`docs/architecture/`) |
-| Production Next.js + FastAPI + workers + Hetzner + Postgres | **To build** (pending approval) |
+| Clickable **UI mock** (teacher app + platform admin) | Done (`teacher-mock/`, localStorage) |
+| Architecture docs + Mermaid diagrams | Done (`docs/architecture/`, `system_overview.html`) |
+| Production services | Built (`getxplain-ai-teacher-*` repos) |
+| Full canonical reference | `/root/code/system_overview.md` |
 
 ---
 
-## 8. Decision points for approval
+## 8. One-line summary
 
-Please confirm / approve:
-
-1. **Product scope** as described (media → chat → plan → slides).
-2. **Hard separation**: analyze files first; chat never re-parses files.
-3. **Tech stack**: Next.js, FastAPI, chat microservice (WebSocket), arq workers, Postgres, Hetzner, Gemini.
-4. **Lesson status model** and lesson JSON contents (media + plan + slides). Identity/preferences remain DB-only.
-5. **Roles**: teacher, org admin, platform admin.
-6. Proceed to production implementation (phased delivery recommended).
-
-### Suggested delivery phases (if approved)
-
-1. **Auth + orgs + media upload + describer**
-2. **Chat service + preferences persistence**
-3. **Planner + plan approval UI**
-4. **Executer + lesson JSON + ready view**
-5. **Platform admin (orgs, users, catalogs)** hardened for production
+**Teachers upload materials once; the system indexes them; later they chat in real time (SSE) to define a lesson; after approval we generate a plan and then HTML slides — powered by Next.js, FastAPI, ADK chat with MCP tools, SAQ workers, Postgres, S3, and Gemini.**
 
 ---
 
-## 9. One-line summary
-
-**Teachers upload materials once; the system learns them; later they chat in real time to define a lesson; after approval we generate a plan and then HTML slides as a packaged lesson — powered by Next.js, FastAPI, a live chat service, background workers, Postgres, Hetzner, and Gemini.**
-
----
-
-*Detailed diagrams:* `getxplain-teacher-mock/docs/architecture/`  
-*UI mock:* `getxplain-teacher-mock/` (run with `python3 -m http.server 5173`)
+*Detailed diagrams:* `teacher-mock/docs/architecture/`  
+*Browsable overview:* `teacher-mock/system_overview.html`  
+*Full stack reference:* `/root/code/system_overview.md`  
+*UI mock:* `teacher-mock/` (run with `python3 -m http.server 5173`)

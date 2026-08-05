@@ -1,15 +1,37 @@
 # Xplain AI Teacher Tools — UI Mock (Milestone 0)
 
-Clickable prototype aligned with the UX discovery in `chat.txt`. **No backend, no LLM, no real uploads** — browser `localStorage` + timers only
+Clickable prototype aligned with the production teacher-tools UX. **No backend, no LLM, no real uploads** — browser `localStorage` + timers only.
+
+**Architecture docs:** [`docs/architecture/`](docs/architecture/README.md) · **Browsable overview:** [`system_overview.html`](system_overview.html) · **Full production reference:** [`/root/code/system_overview.md`](../system_overview.md)
 
 ## Run
 
 ```bash
-cd getxplain-teacher-mock
+cd teacher-mock
 python3 -m http.server 5173
 ```
 
 Open http://localhost:5173 — you will be redirected to **login**.
+
+Architecture overview: http://localhost:5173/system_overview.html
+
+## Repo structure
+
+```
+teacher-mock/
+├── index.html              # Home — create lesson, continue recent
+├── workspace.html          # Chat | plan | slides (main flow)
+├── media.html              # Nested folder media library
+├── identities.html classes.html lessons.html
+├── organization.html settings.html
+├── login.html signup.html confirm-org.html
+├── admin/                  # Platform admin (separate auth)
+├── js/                     # store, chat, workspace, media, layout, …
+├── css/app.css
+├── docs/architecture/      # Production architecture + mock mapping
+├── db-schema-eraser.md     # Postgres ER for eraser.io
+└── system_overview.html    # Browsable architecture page
+```
 
 ## Auth (mock)
 
@@ -50,13 +72,14 @@ Separate site under `/admin/`:
 
 Dashboard includes:
 
-- Left sidebar: **Dashboard**, **Organizations**, **Teachers**
+- Left sidebar: **Dashboard**, **Organizations**, **Teachers**, **Catalogs**
 - Stats overview on the dashboard
 - Dedicated CRUD pages with **search** and **pagination** for organizations and teachers
 - Create organization (+ admin account), edit/delete orgs
 - Create/edit teachers, inactive, reset password, delete
+- Catalogs: grades, curriculums, backgrounds, image styles, fonts
 
-Pages: `admin/dashboard.html`, `admin/organizations.html`, `admin/teachers.html`
+Pages: `admin/dashboard.html`, `admin/organizations.html`, `admin/teachers.html`, `admin/catalogs.html`
 
 ## UX rules implemented
 
@@ -67,6 +90,7 @@ Pages: `admin/dashboard.html`, `admin/organizations.html`, `admin/teachers.html`
 - Pencil inserts a visible `@Global Design Style` / `@Page N` mention into chat
 - Editing Global Style updates **only** that card (pages stay unchanged)
 - **Approve & Execute** builds slide placeholders, then the ready lesson
+- Media Library uses **nested folders** (Drive-style); only **indexed** files attach to lessons
 
 ## Pages
 
@@ -74,12 +98,14 @@ Pages: `admin/dashboard.html`, `admin/organizations.html`, `admin/teachers.html`
 |------|------|
 | `login.html` / `signup.html` / `confirm-org.html` | Teacher auth |
 | `index.html` | Blank start + continue recent |
-| `classes.html` | Classes CRUD |
-| `media.html` | Media library + mock upload |
+| `classes.html` / `class.html` | Classes CRUD |
+| `media.html` | Media library + mock upload (nested folders) |
 | `lessons.html` | Session list |
 | `workspace.html` | Chat \| plan / execute / ready |
+| `identities.html` | Brand kits (colors, style, background) |
 | `organization.html` | Org admin: name, domains, logo, teachers |
 | `settings.html` | Personal profile + reset |
+| `system_overview.html` | Architecture overview (this doc in HTML) |
 | `admin/login.html` | Platform admin login |
 | `admin/dashboard.html` | Platform stats overview |
 | `admin/organizations.html` | Org CRUD + search/pagination |
@@ -88,7 +114,7 @@ Pages: `admin/dashboard.html`, `admin/organizations.html`, `admin/teachers.html`
 
 ## Happy path (full chat cycle)
 
-1. Hard-refresh (store **v10**) or Settings → Reset demo data, then log in again
+1. Hard-refresh (store **v11**) or Settings → Reset demo data, then log in again
 2. Home → type `Build a lesson about AI for Grade 8` → Create New Lesson  
    (or open **New Lesson** and type it in chat)
 3. Pick **source(s)** from the buttons (e.g. Intro_to_AI_Unit.pdf)
@@ -107,4 +133,4 @@ Settings → **Reset demo data**, or clear `localStorage` key `xplain-teacher-mo
 
 ## Note
 
-Milestone 0 UX prototype. Production is planned as Next.js + WorkOS + teachers-api. Passwords in this mock are plain text in `localStorage` only.
+Milestone 0 UX prototype. Production stack: Next.js + WorkOS + teacher-api + teacher-chat (ADK/SSE) + SAQ workers. Passwords in this mock are plain text in `localStorage` only.
