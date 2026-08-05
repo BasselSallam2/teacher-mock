@@ -99,8 +99,9 @@ sequenceDiagram
 | Tool filter | `get_lesson_context`, `append_lesson_message`, `update_lesson_preferences`, `patch_lesson`, `transition_lesson_status` |
 | Grounding | `before_tool_callback` strips ungrounded preference fields |
 | Visible text | Stream + persist strip `<execute_tool>`, tool dumps, and JSON fences — teachers never see machine artifacts |
+| Preference sync | ADK tools preferred; runner also applies grounded `preference_updates` JSON + chip-answer inference so checklist/CTAs still update when tools are skipped |
 | Interaction chips | Required on every question: trailing JSON `interaction` → `message.meta` (quick replies + free text) |
-| Plan CTAs | UI shows **Make plan** / **Skip questions & make plan** / **Continue chatting** when status/checklist allow |
+| Plan CTAs | UI shows **Make plan** when checklist complete, status is `awaiting_plan_approval`, or assistant says to click Make plan; **Skip questions & make plan** while chatting otherwise |
 | History | Postgres `lesson_messages` (rehydrated each turn) |
 | Concurrency | One run per lesson (409 if busy) |
 | Rollback | `ADK_AGENT_ENABLED=false` → legacy `LessonAgent` |
